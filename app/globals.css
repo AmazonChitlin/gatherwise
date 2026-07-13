@@ -1,0 +1,201 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f7fb;
+  --navy: #07111f;
+  --navy-soft: #0e1b2d;
+  --charcoal: #151a22;
+  --sand: #eef2f7;
+  --sand-light: #f8fafc;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --foreground: #151a22;
+  --muted: #647184;
+  --line: #d9e1ea;
+  --line-strong: #aab7c6;
+  --primary: #ff6a1f;
+  --primary-strong: #c5440a;
+  --primary-soft: #fff0e7;
+  --secondary: #27364a;
+  --secondary-strong: #111b2a;
+  --secondary-soft: #e8eef6;
+  --highlight: #ffb020;
+  --highlight-strong: #8a5300;
+  --highlight-soft: #fff4d8;
+  --success: #1f9d67;
+  --success-strong: #12613f;
+  --success-soft: #dcf8eb;
+  --warning: #d97706;
+  --warning-strong: #8a4603;
+  --warning-soft: #fff1d6;
+  --alert: #c2413a;
+  --alert-strong: #7f1d1d;
+  --alert-soft: #fee2e2;
+  --verified: #139b8f;
+  --verified-strong: #0f625c;
+  --verified-soft: #dff8f5;
+  --brand: var(--primary);
+  --brand-strong: var(--primary-strong);
+  --accent: var(--alert);
+  --info: var(--verified);
+  --shadow: 0 26px 80px rgba(7, 17, 31, 0.18);
+  --shadow-soft: 0 14px 34px rgba(15, 23, 42, 0.1);
+  --radius-card: 20px;
+  --radius-control: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 106, 31, 0.08), transparent 24rem),
+    radial-gradient(circle at 90% 10%, rgba(19, 155, 143, 0.08), transparent 22rem),
+    var(--background);
+  background-size:
+    auto,
+    auto,
+    auto;
+  color: var(--foreground);
+  font-family: "Avenir Next", Avenir, "Inter", "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.focus-ring:focus-visible {
+  outline: 3px solid rgba(255, 106, 31, 0.36);
+  outline-offset: 2px;
+}
+
+.local-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92)),
+    var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.command-card-dark {
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 106, 31, 0.2), transparent 18rem),
+    radial-gradient(circle at 88% 0%, rgba(19, 155, 143, 0.14), transparent 16rem),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 58%, #121923 100%);
+  color: #f8fafc;
+}
+
+.local-callout {
+  border: 1px solid rgba(19, 155, 143, 0.24);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(135deg, rgba(223, 248, 245, 0.9), rgba(255, 255, 255, 0.96)),
+    var(--surface);
+  box-shadow: 0 12px 30px rgba(7, 17, 31, 0.06);
+}
+
+.local-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.64rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.local-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-control);
+  padding: 0.78rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 750;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.local-button:hover {
+  transform: translateY(-1px);
+}
+
+.eventlocal-command-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 106, 31, 0.3), transparent 22rem),
+    radial-gradient(circle at 86% 8%, rgba(19, 155, 143, 0.18), transparent 20rem),
+    linear-gradient(135deg, #07111f 0%, #0c1728 48%, #121923 100%);
+}
+
+.eventlocal-command-hero::before,
+.command-pattern::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at 22px 22px, rgba(255, 106, 31, 0.22) 1.5px, transparent 2px);
+  background-size:
+    44px 44px,
+    44px 44px,
+    88px 88px;
+  mask-image: linear-gradient(110deg, rgba(0, 0, 0, 0.82), transparent 72%);
+}
+
+.eventlocal-command-hero::after {
+  position: absolute;
+  inset: auto -10% -35% 18%;
+  height: 24rem;
+  content: "";
+  background: rgba(255, 106, 31, 0.16);
+  filter: blur(90px);
+  transform: rotate(-8deg);
+}
+
+.command-pattern {
+  position: relative;
+  overflow: hidden;
+}
+
+.command-pattern > * {
+  position: relative;
+  z-index: 1;
+}
+
+.orange-rule {
+  position: relative;
+}
+
+.orange-rule::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3.25rem;
+  height: 0.22rem;
+  content: "";
+  background: var(--primary);
+  border-radius: 999px;
+}

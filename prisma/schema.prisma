@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite keeps local development simple. Moving to Postgres should mainly be
+  // a datasource change plus a migration review, not an app architecture rewrite.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Jurisdiction {
+  id                String             @id @default(cuid())
+  code              String             @unique
+  name              String
+  jurisdictionType  String
+  city              String?
+  county            String?
+  state             String             @default("AZ")
+  agencies          Agency[]
+  rules             RuleRecord[]
+  intakeSubmissions IntakeSubmission[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([jurisdictionType])
+  @@index([city])
+  @@index([county])
+  @@index([state])
+}
+
+model Agency {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  name           String
+  phone          String?
+  email          String?
+  url            String?
+  jurisdictionId String
+  jurisdiction   Jurisdiction @relation(fields: [jurisdictionId], references: [id], onDelete: Cascade)
+  rules          RuleRecord[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([name])
+  @@index([jurisdictionId])
+}
+
+model UseCase {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  name        String
+  description String?
+  rules       RuleRecord[]
+  intakes     IntakeSubmission[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model RuleRecord {
+  id                  String                   @id @default(cuid())
+  slug                String                   @unique
+  title               String
+  plainEnglishSummary String
+  requirementLevel    String
+  confidence          String
+  leadTimeDays        Int?
+  sourceUrl           String
+  sourceName          String
+  lastVerified        DateTime?
+  isSample            Boolean                  @default(true)
+  verificationStatus  String                   @default("sample_unverified")
+  jurisdictionName    String
+  jurisdictionCode    String?
+  jurisdictionType    String
+  city                String?
+  county              String?
+  state               String                   @default("AZ")
+  agencyName          String
+  agencyPhone         String?
+  agencyEmail         String?
+  agencyUrl           String?
+  triggerFields       String
+  notes               String?
+  jurisdictionId      String
+  jurisdiction        Jurisdiction             @relation(fields: [jurisdictionId], references: [id], onDelete: Cascade)
+  agencyId            String?
+  agency              Agency?                  @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  useCaseId           String
+  useCase             UseCase                  @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+  checklistItems      GeneratedChecklistItem[]
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([jurisdictionType])
+  @@index([jurisdictionCode])
+  @@index([city])
+  @@index([county])
+  @@index([state])
+  @@index([requirementLevel])
+  @@index([confidence])
+  @@index([verificationStatus])
+  @@index([useCaseId])
+  @@index([agencyId])
+}
+
+model IntakeSubmission {
+  id                    String                   @id @default(cuid())
+  eventName             String
+  contactEmail          String?
+  city                  String?
+  county                String?
+  state                 String                   @default("AZ")
+  jurisdictionCode      String?
+  eventDate             DateTime?
+  eventType             String
+  venueType             String
+  expectedAttendance    Int
+  vendorCount           Int
+  hasFood               Boolean                  @default(false)
+  hasFoodTruck          Boolean                  @default(false)
+  hasRetailSales        Boolean                  @default(false)
+  hasAlcohol            Boolean                  @default(false)
+  hasAmplifiedSound     Boolean                  @default(false)
+  usesPublicProperty    Boolean                  @default(false)
+  usesPrivateProperty   Boolean                  @default(false)
+  hasStreetClosure      Boolean                  @default(false)
+  hasParkingImpact      Boolean                  @default(false)
+  hasTemporaryStructure Boolean                  @default(false)
+  hasGenerator          Boolean                  @default(false)
+  hasOpenFlame          Boolean                  @default(false)
+  hasSignage            Boolean                  @default(false)
+  isTicketed            Boolean                  @default(false)
+  isMultiVendor         Boolean                  @default(false)
+  isRecurring           Boolean                  @default(false)
+  rawAnswers            String?
+  jurisdictionId        String?
+  jurisdiction          Jurisdiction?            @relation(fields: [jurisdictionId], references: [id], onDelete: SetNull)
+  useCaseId             String?
+  useCase               UseCase?                 @relation(fields: [useCaseId], references: [id], onDelete: SetNull)
+  checklistItems        GeneratedChecklistItem[]
+  productOrders         FutureProductOrder[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([city])
+  @@index([county])
+  @@index([state])
+  @@index([jurisdictionCode])
+  @@index([eventType])
+  @@index([useCaseId])
+  @@index([jurisdictionId])
+}
+
+model GeneratedChecklistItem {
+  id                  String           @id @default(cuid())
+  intakeSubmissionId  String
+  intakeSubmission    IntakeSubmission @relation(fields: [intakeSubmissionId], references: [id], onDelete: Cascade)
+  ruleRecordId        String?
+  ruleRecord          RuleRecord?      @relation(fields: [ruleRecordId], references: [id], onDelete: SetNull)
+  title               String
+  plainEnglishSummary String
+  requirementLevel    String
+  jurisdictionName    String?
+  agencyName          String?
+  sourceUrl           String?
+  sourceName          String?
+  confidence          String?
+  leadTimeDays        Int?
+  sortOrder           Int              @default(0)
+  createdAt           DateTime         @default(now())
+
+  @@index([intakeSubmissionId])
+  @@index([ruleRecordId])
+  @@index([requirementLevel])
+}
+
+model FutureProductOrder {
+  // Future paid-product placeholder only. No payment processor, checkout flow,
+  // subscription logic, document vault, or fulfillment workflow exists yet.
+  id                 String            @id @default(cuid())
+  intakeSubmissionId String?
+  intakeSubmission   IntakeSubmission? @relation(fields: [intakeSubmissionId], references: [id], onDelete: SetNull)
+  productType        String
+  status             String            @default("planned")
+  amountCents        Int?
+  currency           String            @default("usd")
+  externalReference  String?
+  customerEmail      String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([productType])
+  @@index([status])
+  @@index([intakeSubmissionId])
+}
