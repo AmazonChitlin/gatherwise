@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
 import {
@@ -13,36 +14,27 @@ import {
 } from "@/components/ui";
 import { supportedJurisdictions } from "@/lib/config";
 
-const checks = [
+export const metadata: Metadata = {
+  title: "Home",
+  description:
+    "Gatherwise helps Arizona pilot users sort event details, understand what may apply, and check official sources."
+};
+
+const taskAreas = [
   {
     icon: "city",
-    title: "City event permits",
-    text: "Spot city event, vendor, park, and property review items that may apply."
-  },
-  {
-    icon: "truck",
-    title: "Food truck & food events",
-    text: "Surface county food guidance for food trucks, temporary food, samples, and food handling."
-  },
-  {
-    icon: "tax",
-    title: "Arizona TPT / sales tax",
-    text: "Flag Arizona sales-tax readiness items when retail sales are part of the setup."
-  },
-  {
-    icon: "tent",
-    title: "Tents, sound, traffic & more",
-    text: "Catch common red flags such as tents, amplified sound, parking, traffic, and public space."
-  },
-  {
-    icon: "contact",
-    title: "Agency contacts & sources",
-    text: "Show official source links and agency contact paths where verified records include them."
+    title: "Start with event details",
+    text: "Describe the setup in plain language or work through the guided form."
   },
   {
     icon: "timeline",
-    title: "Planning lead times",
-    text: "Turn matched records into a practical timeline so you know what to check first."
+    title: "See what may apply",
+    text: "Get a source-backed summary, planning lead times, and details that still need review."
+  },
+  {
+    icon: "contact",
+    title: "Check the official source",
+    text: "Use agency contacts and source links before you commit time, money, or materials."
   }
 ] satisfies {
   icon: EventLocalIconName;
@@ -50,178 +42,80 @@ const checks = [
   text: string;
 }[];
 
-const audiences = [
-  {
-    icon: "truck",
-    title: "Food trucks"
-  },
-  {
-    icon: "booth",
-    title: "Retail pop-up vendors"
-  },
-  {
-    icon: "artist",
-    title: "Artists & record sellers"
-  },
-  {
-    icon: "market",
-    title: "Market hosts"
-  },
-  {
-    icon: "venue",
-    title: "Venue/property hosts"
-  },
-  {
-    icon: "sound",
-    title: "Outdoor event planners"
-  }
-] satisfies {
-  icon: EventLocalIconName;
-  title: string;
-}[];
-
-const steps = [
-  {
-    title: "Tell us what you’re planning",
-    text: "Choose the city, property type, food, sales, sound, structure, and traffic details you know."
-  },
-  {
-    title: "EventLocal checks verified records",
-    text: "The rule engine compares your answers to source-linked city, county, and state rule records."
-  },
-  {
-    title: "Review your plain-English checklist",
-    text: "See matched guidance, timelines, red flags, source links, and agency contacts in one place."
-  },
-  {
-    title: "Confirm next steps with the agency",
-    text: "Use official source links and contacts to verify deadlines, forms, fees, and final instructions."
-  }
-];
-
-const previewItems = [
-  {
-    label: "Phoenix outdoor event review",
-    meta: "May apply"
-  },
-  {
-    label: "Maricopa County food guidance",
-    meta: "May apply"
-  },
-  {
-    label: "Arizona TPT / sales tax check",
-    meta: "Check source"
-  },
-  {
-    label: "Planning lead times",
-    meta: "Check timelines"
-  },
-  {
-    label: "Agency contacts",
-    meta: "Confirm"
-  }
-];
-
 const launchAreas = supportedJurisdictions.map((area) => area.label);
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
       <section className="eventlocal-command-hero">
-        <PageContainer className="relative z-10 grid gap-10 py-16 lg:grid-cols-[1fr_460px] lg:items-center">
+        <PageContainer className="relative z-10 grid gap-10 py-16 lg:grid-cols-[1fr_440px] lg:items-center">
           <section>
-            <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-[-0.04em] text-white sm:text-6xl">
-              Get your local{" "}
-              <span className="text-[var(--primary)]">event ready</span>{" "}
-              before you set up.
+            <Badge tone="highlight">Arizona pilot</Badge>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight tracking-[-0.04em] text-white sm:text-6xl">
+              Ready local event guidance for{" "}
+              <span className="text-[var(--primary)]">organizers, vendors, and venues</span>.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              EventLocal checks verified rules and official sources so you know
-              what may apply to your event before you commit time, money, and
-              materials.
+              Gatherwise is AI-powered event readiness for the Arizona pilot.
+              Start with the details you know, see what may apply, and check
+              the official source before event day.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink href="/intake">
-                Check my event
+                Plan an event
                 <ArrowRight className="h-4 w-4" />
               </ButtonLink>
               <ButtonLink
                 className="border-white/20 bg-white/10 text-white hover:bg-white/15"
-                href="#checks"
+                href="/how-it-works"
                 tone="secondary"
               >
-                See what EventLocal checks
+                How it works
               </ButtonLink>
             </div>
             <p className="mt-5 max-w-xl text-sm leading-6 text-slate-400">
-              Informational guidance only. EventLocal does not submit permits or
-              provide legal advice.
+              Informational guidance only. Check the official source before you
+              rely on a result.
             </p>
           </section>
 
           <Card className="border-white/15 bg-white p-5 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
-              <div>
-                <Badge tone="highlight">Example only</Badge>
-                <h2 className="mt-2 text-xl font-extrabold">
-                  Phoenix parking lot food vendor event
-                </h2>
-              </div>
-              <div className="rounded-2xl bg-[var(--primary-soft)] p-3 text-[var(--primary)]">
-                <EventLocalIcon className="h-6 w-6" name="city" />
-              </div>
+            <Badge tone="primary">Choose a starting path</Badge>
+            <div className="mt-4 grid gap-4">
+              <PathCard
+                cta="Describe my event"
+                href="/intake?path=describe"
+                note="Preview path"
+                text="Start with a plain-language description. The describe path is being shaped for the Arizona pilot."
+                title="Describe my event"
+              />
+              <PathCard
+                cta="Use the guided form"
+                href="/intake?path=guided"
+                note="Available now"
+                text="Use the step-by-step form today for source-backed pilot results."
+                title="Use the guided form"
+              />
             </div>
-            <div className="mt-5 grid gap-3">
-              {previewItems.map((item) => (
-                <HeroChecklistRow
-                  key={item.label}
-                  label={item.label}
-                  meta={item.meta}
-                />
-              ))}
-            </div>
-            <p className="mt-5 rounded-[var(--radius-control)] bg-[var(--primary-soft)] p-3 text-sm leading-6 text-[var(--primary-strong)]">
-              This is an example of how results look. Your results will be
-              based on your event details.
-            </p>
           </Card>
         </PageContainer>
       </section>
 
       <PageContainer className="pt-14 pb-12">
-        <section id="checks">
-          <SectionHeading
-            description="The MVP checks common event-readiness areas without claiming a final legal answer."
-            title="What EventLocal checks"
-          />
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {checks.map((item) => (
-              <Card className="p-5" key={item.title}>
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
-                  <EventLocalIcon className="h-5 w-5" name={item.icon} />
-                </div>
-                <h3 className="mt-4 text-lg font-extrabold">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  {item.text}
-                </p>
-              </Card>
-            ))}
-          </div>
-        </section>
-      </PageContainer>
-
-      <PageContainer className="py-0 pb-12">
         <SectionHeading
-          description="Designed for people who need practical next steps before event day, not a government portal."
-          title="Who it helps"
+          description="Gatherwise is built around the next planning step, the details that matter, and the source trail behind the result."
+          title="What you can do now"
         />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {audiences.map((audience) => (
-            <Card className="p-4 text-center" key={audience.title}>
-              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--secondary-soft)] text-[var(--secondary)]">
-                <EventLocalIcon className="h-5 w-5" name={audience.icon} />
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {taskAreas.map((item) => (
+            <Card className="p-5" key={item.title}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
+                <EventLocalIcon className="h-5 w-5" name={item.icon} />
               </div>
-              <h3 className="mt-3 text-sm font-extrabold">{audience.title}</h3>
+              <h2 className="mt-4 text-lg font-extrabold">{item.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {item.text}
+              </p>
             </Card>
           ))}
         </div>
@@ -230,24 +124,14 @@ export default function HomePage() {
       <PageContainer className="py-0 pb-12">
         <Card className="p-6">
           <SectionHeading
-            description="A short flow built around plain-English facts, source-linked rule matching, and cautious guidance."
-            title="How it works"
+            description="You do not need to know permit names first. The product starts with event-planning details."
+            title="What information is needed"
           />
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {steps.map((step, index) => (
-              <div
-                className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--sand-light)] p-4"
-                key={step.title}
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-black text-white">
-                  {index + 1}
-                </span>
-                <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  {step.text}
-                </p>
-              </div>
-            ))}
+            <QuickFact title="Where it happens" text="City, county, and venue type." />
+            <QuickFact title="What kind of event" text="Use case, event type, and audience size." />
+            <QuickFact title="What changes the route" text="Food, alcohol, sound, structures, traffic, and promotion." />
+            <QuickFact title="What still needs review" text="Missing venue, timing, or public-space details that may change results." />
           </div>
         </Card>
       </PageContainer>
@@ -255,8 +139,8 @@ export default function HomePage() {
       <PageContainer className="grid gap-6 py-0 pb-12 lg:grid-cols-[1fr_420px]">
         <section>
           <SectionHeading
-            description="A typical result stacks city, county, and state guidance when the intake details support it."
-            title="See an example result"
+            description="Results are organized around what may apply, why it may apply, and where to check the official source."
+            title="What the result means"
           />
           <Card className="mt-5 overflow-hidden p-0">
             <div className="border-b border-[var(--line)] bg-[var(--navy)] p-5 text-white">
@@ -265,42 +149,38 @@ export default function HomePage() {
                 Phoenix parking lot food vendor event
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-300">
-                A static preview of how matched results can stack across city,
-                county, and state records.
+                A sample result that stacks city, county, and state guidance
+                based on the details provided.
               </p>
             </div>
             <div className="grid gap-5 p-5 lg:grid-cols-[1fr_260px]">
               <div>
                 <h4 className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  Matched guidance
+                  What may apply
                 </h4>
                 <div className="mt-4 grid gap-3">
-                  {previewItems.slice(0, 3).map((item) => (
-                    <HeroChecklistRow
-                      key={item.label}
-                      label={item.label}
-                      meta={item.meta}
-                    />
-                  ))}
+                  <HeroChecklistRow label="Phoenix outdoor event review" meta="May apply" />
+                  <HeroChecklistRow label="Maricopa County food guidance" meta="Needs review" />
+                  <HeroChecklistRow label="Arizona TPT / sales tax check" meta="Check source" />
                 </div>
               </div>
               <div className="grid gap-3">
                 <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
-                    Lead time preview
+                    Why it applies
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Start checking agency items as early as matched lead times
-                    suggest.
+                    Based on the details you provided: parking lot use, public
+                    attendance, food vendors, and event setup details.
                   </p>
                 </div>
                 <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--verified-strong)]">
-                    Next step / contact
+                    Official evidence
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    Use source links and agency contacts to confirm forms,
-                    fees, and deadlines.
+                    Each result should lead you back to a city, county, or
+                    state source to check current instructions.
                   </p>
                 </div>
               </div>
@@ -312,15 +192,15 @@ export default function HomePage() {
           <DisclaimerNotice />
           <Card className="p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="verified">Source-linked</Badge>
-              <Badge tone="neutral">Plain English</Badge>
+              <Badge tone="verified">Source-backed</Badge>
+              <Badge tone="neutral">Plain language</Badge>
             </div>
             <h3 className="mt-4 text-lg font-semibold">
-              Results are guidance, not a final approval
+              Results are planning guidance, not approval
             </h3>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              EventLocal helps you see what to check first. Always confirm
-              requirements, timelines, fees, and forms with the official agency.
+              Gatherwise helps you see what to check next. It does not verify
+              that an event is approved or complete.
             </p>
           </Card>
         </aside>
@@ -330,25 +210,25 @@ export default function HomePage() {
         <section className="command-pattern rounded-[28px] bg-[var(--navy)] p-6 text-white shadow-[var(--shadow)] lg:p-8">
           <div className="grid gap-8 lg:grid-cols-3">
             <TrustColumn
-              title="Trust & transparency"
+              title="Why it applies"
               items={[
-                "Source-linked rule records",
-                "Direct links to official agencies",
-                "Plain-English explanations",
-                "Built for clarity and confidence"
+                "Based on the details you provided",
+                "What may change your results",
+                "What still needs review",
+                "What to check first"
               ]}
             />
             <TrustColumn
-              title="Important limits"
+              title="Official evidence"
               items={[
-                "Informational guidance only",
-                "Not legal advice",
-                "No permit submission",
-                "Confirm with official agencies"
+                "Source-linked rule records",
+                "Agency contact paths",
+                "Plain-language summaries",
+                "Check the official source"
               ]}
             />
             <div>
-              <h2 className="text-xl font-black">Supported launch areas</h2>
+              <h2 className="text-xl font-black">Arizona pilot scope</h2>
               <div className="mt-5 flex flex-wrap gap-2">
                 {launchAreas.map((area) => (
                   <span
@@ -363,22 +243,43 @@ export default function HomePage() {
           </div>
         </section>
       </PageContainer>
-
-      <section className="bg-[var(--navy)]">
-        <PageContainer className="py-14 text-center">
-          <h2 className="text-3xl font-black tracking-[-0.03em] text-white sm:text-5xl">
-            Know before you vend.
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300">
-            EventLocal helps you plan with confidence.
-          </p>
-          <ButtonLink className="mt-7" href="/intake">
-            Check my event
-            <ArrowRight className="h-4 w-4" />
-          </ButtonLink>
-        </PageContainer>
-      </section>
     </main>
+  );
+}
+
+function PathCard({
+  cta,
+  href,
+  note,
+  text,
+  title
+}: {
+  cta: string;
+  href: string;
+  note: string;
+  text: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-extrabold">{title}</h2>
+        <Badge tone="neutral">{note}</Badge>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{text}</p>
+      <ButtonLink className="mt-4" href={href} tone="secondary">
+        {cta}
+      </ButtonLink>
+    </div>
+  );
+}
+
+function QuickFact({ text, title }: { text: string; title: string }) {
+  return (
+    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--sand-light)] p-4">
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{text}</p>
+    </div>
   );
 }
 
@@ -401,11 +302,11 @@ function statusTone(meta: string) {
     return "highlight";
   }
 
-  if (meta === "Check source" || meta === "Confirm") {
+  if (meta === "Check source") {
     return "verified";
   }
 
-  return "neutral";
+  return "warning";
 }
 
 function TrustColumn({ title, items }: { title: string; items: string[] }) {

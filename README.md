@@ -1,16 +1,16 @@
-# EventLocal MVP
+# Gatherwise MVP
 
-EventLocal is a Next.js MVP for local event readiness.
+Gatherwise is a Next.js MVP for local event readiness.
 
 Brand:
 
-- Name: EventLocal
+- Name: Gatherwise
 - Tagline: Ready. Set. Local.
 - Core message: Get your local event ready before you set up.
 
-EventLocal helps vendors, food trucks, artists, pop-up businesses, small event organizers, venues, and market hosts understand what permits, licenses, deadlines, documents, contacts, and red flags may apply before a local event.
+Gatherwise helps vendors, food trucks, artists, pop-up businesses, small event organizers, venues, and market hosts understand what permits, licenses, deadlines, documents, contacts, and red flags may apply before a local event.
 
-## What EventLocal Does
+## What Gatherwise Does
 
 - Collects practical intake details about a local event.
 - Saves intake submissions to a local SQLite database.
@@ -18,13 +18,13 @@ EventLocal helps vendors, food trucks, artists, pop-up businesses, small event o
 - Displays a basic checklist, timeline, red flags, agency contacts, and official source links.
 - Uses cautious wording: `Likely required`, `May be required`, and `Confirm with agency`.
 
-## What EventLocal Does Not Do
+## What Gatherwise Does Not Do
 
-- EventLocal is not legal advice.
-- EventLocal does not submit permits.
-- EventLocal does not guarantee compliance.
-- EventLocal does not confirm final legal requirements.
-- EventLocal does not replace the relevant agency.
+- Gatherwise is not legal advice.
+- Gatherwise does not submit permits.
+- Gatherwise does not guarantee compliance.
+- Gatherwise does not confirm final legal requirements.
+- Gatherwise does not replace the relevant agency.
 - Users should confirm requirements, deadlines, fees, forms, and final instructions with the relevant agency.
 
 Disclaimer language used in the app: **Informational guidance only, not legal advice.**
@@ -220,7 +220,7 @@ The results page:
 - Shows the visible disclaimer.
 - Shows a disabled CTA for future paid products.
 
-The results page does not claim EventLocal has confirmed legal requirements. It does not say the user is compliant.
+The results page does not claim Gatherwise has confirmed legal requirements. It does not say the user is compliant.
 
 ## Adding Future Jurisdictions
 
@@ -269,7 +269,7 @@ Source records validate through `prisma/source-inventory-validation.ts` and rela
 
 ## Source Verification Workflow
 
-EventLocal does not scrape government websites and does not automatically refresh source data. Rule verification is intentionally lightweight for the MVP.
+Gatherwise does not scrape government websites and does not automatically refresh source data. Rule verification is intentionally lightweight for the MVP.
 
 Each `RuleRecord` supports:
 

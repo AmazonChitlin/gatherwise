@@ -137,7 +137,7 @@ export function IntakeForm() {
 
       <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--muted)]">
         Start with the basics, then add any details you know. Optional details
-        help EventLocal match future rules more precisely, but you can leave
+        help Gatherwise match pilot rules more precisely, but you can leave
         them off if they do not apply.
       </div>
 
@@ -371,7 +371,7 @@ export function IntakeForm() {
       </Section>
 
       <Section
-        description="Use this only if alcohol is part of the event. EventLocal will not say alcohol is allowed; it will point to items to confirm."
+        description="Use this only if alcohol is part of the event. Gatherwise will not tell you alcohol is allowed; it will point to items to review."
         meta="Optional details"
         title="Alcohol"
       >
@@ -782,28 +782,41 @@ export function IntakeForm() {
         </div>
       </Section>
 
-      <button
-        className="local-button focus-ring w-full bg-[var(--primary)] text-white disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isSubmitting}
-        type="submit"
-      >
-        {isSubmitting ? (
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 animate-spin rounded-full border-2 border-white/45 border-t-white"
-          />
-        ) : null}
-        {isSubmitting ? "Building your checklist..." : "Build my checklist"}
-        <ArrowRight className="h-4 w-4" />
-      </button>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <button
+          className="local-button focus-ring w-full bg-[var(--primary)] text-white disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSubmitting}
+          type="submit"
+        >
+          {isSubmitting ? (
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 animate-spin rounded-full border-2 border-white/45 border-t-white"
+            />
+          ) : null}
+          {isSubmitting ? "Building your readiness summary..." : "Build my readiness summary"}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+        <button
+          className="focus-ring min-h-[44px] rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
+          onClick={() => {
+            setValues(defaultValues);
+            setErrors({});
+            setSubmitError("");
+          }}
+          type="button"
+        >
+          Reset form
+        </button>
+      </div>
       <p
         aria-live="polite"
         className="text-center text-sm leading-6 text-[var(--muted)]"
         role="status"
       >
         {isSubmitting
-          ? "Saving your answers and matching checklist items. This usually takes a moment."
-          : "You can review results before taking any next step."}
+          ? "Saving your details and matching pilot guidance. This usually takes a moment."
+          : "You can review the result before taking any next step."}
       </p>
     </form>
   );

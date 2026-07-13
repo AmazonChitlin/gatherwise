@@ -7,10 +7,10 @@ export function DisclaimerNotice() {
         Informational guidance only
       </h2>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        EventLocal is not a legal service and does not submit permits. Guidance
-        is general information only, not legal advice. Requirements can change,
-        and some items are cautious planning guidance, so always confirm
-        requirements, deadlines, fees, and forms with the relevant agency.
+        Gatherwise is not a legal service and does not submit permits.
+        Guidance is general information only, not legal advice. Requirements
+        can change, and some items need review, so always check the official
+        source and confirm deadlines, fees, and forms with the relevant agency.
       </p>
     </CalloutPanel>
   );

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { CopyContactButton } from "@/components/copy-contact-button";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
@@ -28,6 +29,12 @@ type IntakeWithUseCase = NonNullable<
   Awaited<ReturnType<typeof getIntakeWithUseCase>>
 >;
 
+export const metadata: Metadata = {
+  title: "Results",
+  description:
+    "Review what may apply, why it may apply, and which official sources to check in the Gatherwise Arizona pilot."
+};
+
 export default async function ResultsPage({
   searchParams
 }: {
@@ -43,16 +50,15 @@ export default async function ResultsPage({
         <PageContainer className="max-w-4xl py-10">
           <ButtonLink href="/intake" tone="secondary">
             <ArrowLeft className="h-4 w-4" />
-            Back to intake
+            Back to planning
           </ButtonLink>
           <Card className="command-card-dark command-pattern mt-5 p-6">
             <Badge tone="warning">No active intake</Badge>
             <h1 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              No intake found yet.
+              No planning details found yet.
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Start with the intake form so EventLocal can show matched
-              checklist items.
+              Start with the guided form so Gatherwise can show what may apply.
             </p>
           </Card>
           <div className="mt-5">
@@ -76,19 +82,19 @@ export default async function ResultsPage({
       <PageContainer>
         <ButtonLink href="/intake" tone="secondary">
           <ArrowLeft className="h-4 w-4" />
-          Back to intake
+          Back to planning
         </ButtonLink>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
           <Card className="command-card-dark command-pattern p-6">
             <Badge tone="highlight">Readiness dashboard</Badge>
             <h1 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em]">
-              {intake.eventName} readiness snapshot
+              {intake.eventName} readiness summary
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Informational guidance only, not legal advice. Use the source
-              links and agency contacts to confirm what applies before event
-              day.
+              Based on the details you provided, this summary shows what may
+              apply, what needs review, and which official sources to check
+              before event day.
             </p>
 
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -147,8 +153,8 @@ export default async function ResultsPage({
             <Card className="border-[var(--primary)] p-5">
               <h2 className="text-lg font-semibold">Downloadable Event Roadmap</h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Future paid feature, not active in this MVP. EventLocal does
-                not process payments or generate downloads yet.
+                Future pilot feature, not active. Gatherwise does not process
+                payments or generate downloads yet.
               </p>
               <div className="mt-4 space-y-4">
                 {futurePaidProducts.map((product) => (
@@ -288,11 +294,11 @@ export default async function ResultsPage({
             <Card className="p-5">
               <Badge tone="primary">Start here</Badge>
               <h2 className="mt-4 text-2xl font-black tracking-[-0.02em]">
-                Top items to check first
+                What to check first
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Start here, then review the full checklist grouped by
-                jurisdiction below.
+                Start here, then review what the result means, why it may
+                apply, and which official source to check.
               </p>
               {topItems.length > 0 ? (
                 <div className="mt-4 grid gap-3">
@@ -307,13 +313,13 @@ export default async function ResultsPage({
               <Card className="border-[var(--warning)] bg-[var(--warning-soft)] p-5">
                 <Badge tone="warning">No matched checklist items yet</Badge>
                 <h3 className="mt-3 text-lg font-semibold">
-                  No EventLocal rule records matched this intake.
+                  No pilot rule records matched these details.
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  This does not mean nothing applies. It only means the current
-                  EventLocal rule records did not match this intake. Confirm
-                  your plan with the city, county, state, venue, or other
-                  relevant agency before you set up.
+                  This does not mean nothing applies. It means the current
+                  Gatherwise pilot records did not match the details provided.
+                  Check the official source with the city, county, state,
+                  venue, or other relevant agency before you set up.
                 </p>
               </Card>
             ) : null}
@@ -348,6 +354,10 @@ export default async function ResultsPage({
                       <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                         {item.plainEnglishSummary}
                       </p>
+                      <div className="mt-3 rounded-[var(--radius-control)] bg-[var(--primary-soft)] p-3 text-sm leading-6 text-[var(--primary-strong)]">
+                        Based on the details you provided, this item may apply
+                        for this jurisdiction and event setup.
+                      </div>
                       <div className="mt-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-sm leading-6 text-[var(--muted)]">
                         {formatVerificationMessage(item)}
                       </div>

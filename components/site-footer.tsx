@@ -1,35 +1,45 @@
 import Link from "next/link";
 
 const footerLinks = [
-  { href: "/", label: "Home" },
-  { href: "/intake", label: "Check my event" },
-  { href: "/about", label: "About / Disclaimer" }
+  { href: "/intake", label: "Plan an event" },
+  { href: "/how-it-works", label: "How it works" },
+  { href: "/sources", label: "Sources" },
+  { href: "/about", label: "About" },
+  { href: "/showcase", label: "Showcase" }
 ];
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--line)] bg-white">
-      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 md:grid-cols-[1.2fr_0.8fr_1fr]">
+      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 md:grid-cols-[1.1fr_0.9fr_1fr]">
         <section>
-          <img
-            alt="EventLocal"
-            className="h-10 w-auto"
-            height={64}
-            src="/brand/eventlocal-logo.png"
-            width={330}
-          />
-          <p className="text-sm font-semibold text-[var(--primary)]">
-            Ready. Set. Local.
-          </p>
+          <div className="inline-flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3">
+            <div className="rounded-[var(--radius-control)] border-2 border-[var(--secondary)] bg-[var(--primary-soft)] px-3 py-2">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--secondary)]">
+                Gatherwise
+              </p>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary-strong)]">
+                Arizona pilot
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--primary)]">
+                Ready. Set. Local.
+              </p>
+              <p className="text-xs text-[var(--muted)]">
+                AI-powered event readiness for organizers, vendors, and venues
+              </p>
+            </div>
+          </div>
           <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
-            Practical local event readiness guidance for Arizona vendors, food
-            sellers, artists, market hosts, small organizers, and venues.
+            Gatherwise helps Arizona pilot users sort event details, understand
+            what may apply, and check official sources before event day.
           </p>
         </section>
 
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Links
+            Explore
           </h2>
           <nav aria-label="Footer navigation" className="mt-3 grid gap-2">
             {footerLinks.map((link) => (
@@ -46,16 +56,16 @@ export function SiteFooter() {
 
         <section>
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Launch area
+            Scope
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Current MVP coverage focuses on Arizona, Maricopa County, and the
-            Phoenix-area launch cities listed in the intake flow.
+            Arizona pilot coverage focuses on Maricopa County and the launch
+            cities listed in the guided form.
           </p>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Informational guidance only. EventLocal does not submit permits,
-            provide legal advice, or guarantee compliance. Confirm details with
-            the relevant agency because requirements can change.
+            Informational guidance only. Gatherwise does not submit permits,
+            approve events, or replace official instructions. Check the
+            official source because requirements can change.
           </p>
         </section>
       </div>
