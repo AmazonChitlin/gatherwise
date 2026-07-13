@@ -523,6 +523,82 @@ button:disabled {
   color: var(--gw-text);
 }
 
+.gw-showcase-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.gw-showcase-kicker {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-step--1);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, white 78%, var(--primary));
+}
+
+.gw-showcase-route-shell {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  overflow: hidden;
+}
+
+.gw-showcase-route-line {
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  left: 0.85rem;
+  width: 0.22rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, var(--gw-route-active) 0%, var(--gw-route-line) 55%, var(--gw-official-source) 100%);
+}
+
+.gw-showcase-route-stop {
+  position: relative;
+  margin-left: 2rem;
+  border: 2px solid var(--gw-border-strong);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 236, 0.95), rgba(248, 242, 228, 0.95)),
+    #fbf4e8;
+}
+
+.gw-showcase-route-stop::before {
+  position: absolute;
+  top: 1.4rem;
+  left: -1.62rem;
+  width: 1rem;
+  height: 1rem;
+  border: 3px solid var(--gw-border-strong);
+  border-radius: 999px;
+  content: "";
+  background: var(--gw-action-primary);
+  box-shadow: 0 0 0 0.35rem rgba(251, 244, 232, 0.9);
+}
+
+.gw-showcase-route-mini-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
+.gw-showcase-mini-card {
+  border: 2px solid var(--gw-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: rgba(255, 248, 234, 0.94);
+}
+
+.gw-showcase-mini-card p {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-step-0);
+  line-height: var(--line-height-copy);
+  color: var(--foreground);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -538,6 +614,21 @@ button:disabled {
 
   .local-button:hover {
     transform: none;
+  }
+}
+
+@media (max-width: 759px) {
+  .gw-showcase-route-stop {
+    margin-left: 1.5rem;
+    padding: var(--space-4);
+  }
+
+  .gw-showcase-route-line {
+    left: 0.55rem;
+  }
+
+  .gw-showcase-route-stop::before {
+    left: -1.28rem;
   }
 }
 
