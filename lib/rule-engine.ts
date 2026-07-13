@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { supportedJurisdictions } from "@/lib/config";
+import {
+  eventFactsToRuleEngineFacts,
+  intakeToEventFacts,
+  type RuleTriggerFacts
+} from "@/lib/event-facts";
 import type { IntakeInput } from "@/lib/schemas";
 import type {
   Confidence,
@@ -61,63 +65,6 @@ export type VerificationStatus =
   | "verified"
   | "needs_review"
   | "sample_placeholder";
-
-type IntakeFacts = {
-  jurisdictionCode: string | null;
-  city: string | null;
-  county: string;
-  state: string;
-  useCase: string;
-  eventType: string;
-  foodService: boolean;
-  foodTruck: boolean;
-  foodIsPrepackaged: boolean;
-  foodIsOpenOrPreparedOnSite: boolean;
-  foodRequiresTemperatureControl: boolean;
-  foodSampling: boolean;
-  drinksWithIceOrGarnish: boolean;
-  foodTruckOrMobileFoodUnit: boolean;
-  commissaryOrBaseOfOperations: boolean;
-  believesFoodExemptionMayApply: boolean;
-  retailSales: boolean;
-  alcohol: boolean;
-  alcoholPresent: boolean;
-  alcoholSold: boolean;
-  alcoholServedFree: boolean;
-  alcoholByob: boolean;
-  alcoholOnPublicProperty: boolean;
-  amplifiedSound: boolean;
-  publicProperty: boolean;
-  privateProperty: boolean;
-  cityParkOrFacility: boolean;
-  venueOrPropertyOwnerPermission: boolean;
-  indoorOrOutdoor: string | null;
-  sidewalkOrStreetClosure: boolean;
-  streetClosure: boolean;
-  sidewalkUseOrClosure: boolean;
-  parkingLotUse: boolean;
-  parkingSpacesBlocked: boolean;
-  trafficControlNeeded: boolean;
-  rightOfWayUse: boolean;
-  expectedAttendance: number;
-  vendorCount: number;
-  temporaryStructure: boolean;
-  tentOrCanopy: boolean;
-  tentSizeRange: string | null;
-  temporaryStageOrPlatform: boolean;
-  generatorUse: boolean;
-  openFlame: boolean;
-  cookingHeatSource: boolean;
-  propaneOrFuelUse: boolean;
-  signage: boolean;
-  temporarySignage: boolean;
-  banners: boolean;
-  ticketedEvent: boolean;
-  admissionFee: boolean;
-  publicAdvertising: boolean;
-  multiVendorEvent: boolean;
-  recurringEvent: boolean;
-};
 
 const requirementRank: Record<RequirementLevel, number> = {
   "likely required": 0,
@@ -242,7 +189,7 @@ export function matchRulesToIntake(
 
 export function triggerFieldsMatch(
   triggerFields: RuleTriggerFields,
-  facts: IntakeFacts
+  facts: RuleTriggerFacts
 ) {
   const hasMatchableTriggers = Object.entries(triggerFields).some(
     ([key, value]) =>
@@ -389,131 +336,8 @@ export function triggerFieldsMatch(
   return checks.every(Boolean);
 }
 
-function intakeToFacts(intake: IntakeInput): IntakeFacts {
-  const jurisdiction = supportedJurisdictions.find(
-    (item) => item.code === intake.city
-  );
-  const publicProperty =
-    intake.publicProperty === true ||
-    intake.cityParkOrFacility === true ||
-    intake.propertyUse === "public-property" ||
-    intake.propertyUse === "park-or-plaza";
-  const privateProperty =
-    intake.privateProperty === true ||
-    intake.propertyUse === "private-property" ||
-    intake.propertyUse === "parking-lot" ||
-    intake.propertyUse === "licensed-venue";
-  const streetOrParkingImpact =
-    intake.hasStreetSidewalkOrParkingImpact ||
-    intake.streetClosure === true ||
-    intake.sidewalkUseOrClosure === true ||
-    intake.parkingSpacesBlocked === true ||
-    intake.trafficControlNeeded === true ||
-    intake.rightOfWayUse === true;
-  const temporaryStructure =
-    intake.hasTemporaryStructure ||
-    intake.tentOrCanopy === true ||
-    intake.temporaryStageOrPlatform === true;
-  const foodTruckOrMobileFoodUnit =
-    intake.hasFoodTruck || intake.foodTruckOrMobileFoodUnit === true;
-  const alcoholPresent =
-    intake.hasAlcohol ||
-    intake.alcoholPresent === true ||
-    intake.alcoholSold === true ||
-    intake.alcoholServedFree === true ||
-    intake.alcoholByob === true ||
-    intake.alcoholOnPublicProperty === true;
-  const signage = intake.temporarySignage === true || intake.banners === true;
-
-  return {
-    jurisdictionCode: jurisdiction?.jurisdictionCode ?? null,
-    city: jurisdiction?.city ?? null,
-    county: intake.county,
-    state: jurisdiction?.state ?? "AZ",
-    useCase: intake.useCase,
-    eventType: intake.eventType,
-    foodService:
-      intake.hasFood ||
-      intake.foodIsPrepackaged === true ||
-      intake.foodIsOpenOrPreparedOnSite === true ||
-      intake.foodRequiresTemperatureControl === true ||
-      intake.foodSampling === true ||
-      intake.drinksWithIceOrGarnish === true,
-    foodTruck: foodTruckOrMobileFoodUnit,
-    foodIsPrepackaged: intake.foodIsPrepackaged === true,
-    foodIsOpenOrPreparedOnSite: intake.foodIsOpenOrPreparedOnSite === true,
-    foodRequiresTemperatureControl:
-      intake.foodRequiresTemperatureControl === true,
-    foodSampling: intake.foodSampling === true,
-    drinksWithIceOrGarnish: intake.drinksWithIceOrGarnish === true,
-    foodTruckOrMobileFoodUnit,
-    commissaryOrBaseOfOperations: intake.commissaryOrBaseOfOperations === true,
-    believesFoodExemptionMayApply:
-      intake.believesFoodExemptionMayApply === true,
-    retailSales: intake.hasRetailSales,
-    alcohol: alcoholPresent,
-    alcoholPresent,
-    alcoholSold: intake.alcoholSold === true,
-    alcoholServedFree: intake.alcoholServedFree === true,
-    alcoholByob: intake.alcoholByob === true,
-    alcoholOnPublicProperty:
-      intake.alcoholOnPublicProperty === true ||
-      (alcoholPresent && publicProperty),
-    amplifiedSound: intake.hasAmplifiedSound,
-    publicProperty,
-    privateProperty,
-    cityParkOrFacility:
-      intake.cityParkOrFacility === true || intake.propertyUse === "park-or-plaza",
-    venueOrPropertyOwnerPermission:
-      intake.venueOrPropertyOwnerPermission === true,
-    indoorOrOutdoor: intake.indoorOrOutdoor ?? null,
-    sidewalkOrStreetClosure: streetOrParkingImpact,
-    streetClosure:
-      intake.streetClosure === true ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    sidewalkUseOrClosure:
-      intake.sidewalkUseOrClosure === true ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    parkingLotUse:
-      intake.parkingLotUse === true ||
-      intake.propertyUse === "parking-lot" ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    parkingSpacesBlocked:
-      intake.parkingSpacesBlocked === true ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    trafficControlNeeded:
-      intake.trafficControlNeeded === true ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    rightOfWayUse:
-      intake.rightOfWayUse === true ||
-      intake.streetClosure === true ||
-      intake.sidewalkUseOrClosure === true ||
-      intake.hasStreetSidewalkOrParkingImpact === true,
-    expectedAttendance: intake.expectedAttendance,
-    vendorCount: intake.vendorCount,
-    temporaryStructure,
-    tentOrCanopy:
-      intake.tentOrCanopy === true || intake.hasTemporaryStructure === true,
-    tentSizeRange: intake.tentSizeRange ?? null,
-    temporaryStageOrPlatform:
-      intake.temporaryStageOrPlatform === true ||
-      intake.hasTemporaryStructure === true,
-    generatorUse: intake.hasGenerator,
-    openFlame:
-      intake.hasOpenFlame ||
-      intake.cookingHeatSource === true ||
-      intake.propaneOrFuelUse === true,
-    cookingHeatSource: intake.cookingHeatSource === true,
-    propaneOrFuelUse: intake.propaneOrFuelUse === true,
-    signage,
-    temporarySignage: intake.temporarySignage === true,
-    banners: intake.banners === true,
-    ticketedEvent: intake.ticketedEvent === true,
-    admissionFee: intake.admissionFee === true,
-    publicAdvertising: intake.publicAdvertising === true,
-    multiVendorEvent: intake.vendorCount > 1,
-    recurringEvent: intake.recurrence === "recurring" || intake.recurringEvent === true
-  };
+function intakeToFacts(intake: IntakeInput): RuleTriggerFacts {
+  return eventFactsToRuleEngineFacts(intakeToEventFacts(intake));
 }
 
 function parseTriggerFields(rule: EngineRuleRecord) {

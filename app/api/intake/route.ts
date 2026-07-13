@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { findSupportedJurisdiction } from "@/lib/config";
+import { intakeToEventFacts, serializeStoredIntakePayload } from "@/lib/event-facts";
 import { buildIntakeCompatibilityFacts } from "@/lib/intake-persistence";
 import { intakeSchema } from "@/lib/schemas";
 
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       })
     : null;
   const compatibilityFacts = buildIntakeCompatibilityFacts(data);
+  const eventFacts = intakeToEventFacts(data);
 
   const intake = await prisma.intakeSubmission.create({
     data: {
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       isTicketed: compatibilityFacts.isTicketed,
       isMultiVendor: data.vendorCount > 1,
       isRecurring: compatibilityFacts.isRecurring,
-      rawAnswers: JSON.stringify(data),
+      rawAnswers: serializeStoredIntakePayload(data, eventFacts),
       jurisdictionId: jurisdiction?.id,
       useCaseId: useCase?.id
     }

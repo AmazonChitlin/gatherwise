@@ -8,6 +8,7 @@ import {
   findSupportedJurisdictionByNormalizedCode,
   supportedJurisdictions
 } from "@/lib/config";
+import { parseStoredIntakePayload } from "@/lib/event-facts";
 import { prisma } from "@/lib/prisma";
 import { futurePaidProducts } from "@/lib/future-products";
 import { buildChecklistForIntake, type ChecklistItem } from "@/lib/rule-engine";
@@ -549,7 +550,7 @@ function getIntakeWithUseCase(intakeId: string) {
 }
 
 function toIntakeInput(intake: IntakeWithUseCase): IntakeInput {
-  const rawAnswers = parseRawAnswers(intake.rawAnswers);
+  const rawAnswers = parseStoredIntakePayload(intake.rawAnswers).intake;
 
   return {
     ...rawAnswers,
@@ -576,23 +577,6 @@ function toIntakeInput(intake: IntakeWithUseCase): IntakeInput {
     hasStreetSidewalkOrParkingImpact:
       intake.hasStreetClosure || intake.hasParkingImpact
   };
-}
-
-function parseRawAnswers(rawAnswers: string | null): Partial<IntakeInput> {
-  if (!rawAnswers) {
-    return {};
-  }
-
-  try {
-    const result = JSON.parse(rawAnswers) as unknown;
-    if (!result || typeof result !== "object") {
-      return {};
-    }
-
-    return result as Partial<IntakeInput>;
-  } catch {
-    return {};
-  }
 }
 
 function cityCodeFromIntake(intake: IntakeWithUseCase) {
