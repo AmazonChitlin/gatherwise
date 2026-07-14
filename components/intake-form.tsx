@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import {
@@ -15,74 +15,32 @@ import {
   useCaseOptions,
   venueTypeOptions
 } from "@/lib/config";
+import { defaultIntakeValues } from "@/lib/intake-defaults";
 import { intakeSchema, type IntakeInput } from "@/lib/schemas";
 
 type TentSizeRange = NonNullable<IntakeInput["tentSizeRange"]>;
 type IndoorOrOutdoor = NonNullable<IntakeInput["indoorOrOutdoor"]>;
 
-const defaultValues: IntakeInput = {
-  eventName: "",
-  city: "phoenix",
-  county: "Maricopa County",
-  useCase: "retail-vendor-booth",
-  eventType: "vendor-pop-up",
-  propertyUse: "private-property",
-  expectedAttendance: 75,
-  vendorCount: 1,
-  eventDate: "",
-  recurrence: "one-time",
-  hasFood: false,
-  hasFoodTruck: false,
-  hasRetailSales: true,
-  hasAlcohol: false,
-  hasAmplifiedSound: false,
-  hasTemporaryStructure: false,
-  hasGenerator: false,
-  hasOpenFlame: false,
-  hasStreetSidewalkOrParkingImpact: false,
-  foodIsPrepackaged: false,
-  foodIsOpenOrPreparedOnSite: false,
-  foodRequiresTemperatureControl: false,
-  foodSampling: false,
-  drinksWithIceOrGarnish: false,
-  foodTruckOrMobileFoodUnit: false,
-  commissaryOrBaseOfOperations: false,
-  believesFoodExemptionMayApply: false,
-  tentOrCanopy: false,
-  tentSizeRange: "none",
-  temporaryStageOrPlatform: false,
-  cookingHeatSource: false,
-  propaneOrFuelUse: false,
-  streetClosure: false,
-  sidewalkUseOrClosure: false,
-  parkingLotUse: false,
-  parkingSpacesBlocked: false,
-  trafficControlNeeded: false,
-  rightOfWayUse: false,
-  alcoholPresent: false,
-  alcoholSold: false,
-  alcoholServedFree: false,
-  alcoholByob: false,
-  alcoholOnPublicProperty: false,
-  temporarySignage: false,
-  banners: false,
-  ticketedEvent: false,
-  admissionFee: false,
-  publicAdvertising: false,
-  cityParkOrFacility: false,
-  privateProperty: true,
-  publicProperty: false,
-  venueOrPropertyOwnerPermission: false,
-  indoorOrOutdoor: "outdoor",
-  recurringEvent: false
+type IntakeFormProps = {
+  initialValues?: IntakeInput;
+  introText?: string;
 };
 
-export function IntakeForm() {
+export function IntakeForm({
+  initialValues,
+  introText = "Start with the basics, then add any details you know. Optional details help Gatherwise match pilot rules more precisely, but you can leave them off if they do not apply."
+}: IntakeFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState(defaultValues);
+  const [values, setValues] = useState(initialValues ?? defaultIntakeValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (initialValues) {
+      setValues(initialValues);
+    }
+  }, [initialValues]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,9 +100,7 @@ export function IntakeForm() {
       ) : null}
 
       <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--muted)]">
-        Start with the basics, then add any details you know. Optional details
-        help Gatherwise match pilot rules more precisely, but you can leave
-        them off if they do not apply.
+        {introText}
       </div>
 
       <Section
@@ -806,7 +762,7 @@ export function IntakeForm() {
         <button
           className="focus-ring min-h-[44px] rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
           onClick={() => {
-            setValues(defaultValues);
+            setValues(initialValues ?? defaultIntakeValues);
             setErrors({});
             setSubmitError("");
           }}

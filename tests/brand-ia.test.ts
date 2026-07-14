@@ -8,6 +8,7 @@ const footer = read("components", "site-footer.tsx");
 const layout = read("app", "layout.tsx");
 const home = read("app", "page.tsx");
 const intake = read("app", "intake", "page.tsx");
+const intakeExperience = read("components", "intake-experience.tsx");
 const about = read("app", "about", "page.tsx");
 const results = read("app", "results", "page.tsx");
 const readme = read("README.md");
@@ -31,9 +32,10 @@ test("sets Gatherwise metadata and Arizona pilot messaging", () => {
 test("implements the two-path intake start model", () => {
   assert.match(home, /Describe my event/);
   assert.match(home, /Use the guided form/);
-  assert.match(intake, /Describe my event/);
-  assert.match(intake, /Use the guided form/);
-  assert.match(intake, /Switch to guided form/);
+  assert.match(intake, /IntakeExperience/);
+  assert.match(intakeExperience, /Describe my event/);
+  assert.match(intakeExperience, /Use the guided form/);
+  assert.match(intake, /manual\s+path stays available/i);
 });
 
 test("updates core public pages to Gatherwise task language", () => {
