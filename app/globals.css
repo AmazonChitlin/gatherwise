@@ -585,6 +585,68 @@ button:disabled {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
 }
 
+.gw-readiness-shell {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.gw-readiness-route-shell {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.gw-readiness-route-line {
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  left: 0.85rem;
+  width: 0.22rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, var(--gw-route-active) 0%, var(--gw-route-line) 62%, var(--gw-official-source) 100%);
+  opacity: 0.7;
+}
+
+.gw-readiness-route-stop {
+  position: relative;
+  margin-left: 2rem;
+  border: 1px solid var(--gw-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 245, 0.96), rgba(248, 242, 228, 0.92)),
+    var(--gw-surface);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--motion-route) var(--ease-standard),
+    opacity var(--motion-standard) var(--ease-gentle),
+    border-color var(--motion-standard) var(--ease-standard);
+}
+
+.gw-readiness-route-stop:hover {
+  transform: translateY(-2px);
+  border-color: var(--gw-border-strong);
+}
+
+.gw-readiness-route-stop::before {
+  position: absolute;
+  top: 1.5rem;
+  left: -1.62rem;
+  width: 1rem;
+  height: 1rem;
+  border: 3px solid var(--gw-border-strong);
+  border-radius: 999px;
+  content: "";
+  background: var(--gw-route-active);
+  box-shadow: 0 0 0 0.35rem rgba(251, 244, 232, 0.9);
+}
+
+.gw-readiness-main,
+.gw-readiness-side {
+  min-width: 0;
+}
+
 .gw-showcase-mini-card {
   border: 2px solid var(--gw-border-strong);
   border-radius: var(--radius-md);
@@ -615,9 +677,25 @@ button:disabled {
   .local-button:hover {
     transform: none;
   }
+
+  .gw-readiness-route-stop:hover {
+    transform: none;
+  }
 }
 
 @media (max-width: 759px) {
+  .gw-readiness-route-stop {
+    margin-left: 1.45rem;
+  }
+
+  .gw-readiness-route-line {
+    left: 0.55rem;
+  }
+
+  .gw-readiness-route-stop::before {
+    left: -1.28rem;
+  }
+
   .gw-showcase-route-stop {
     margin-left: 1.5rem;
     padding: var(--space-4);
@@ -629,6 +707,13 @@ button:disabled {
 
   .gw-showcase-route-stop::before {
     left: -1.28rem;
+  }
+}
+
+@media (min-width: 1040px) {
+  .gw-readiness-shell {
+    grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.95fr);
+    align-items: start;
   }
 }
 

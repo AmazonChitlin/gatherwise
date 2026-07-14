@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
+import { ReadinessRouteExperience } from "@/components/readiness-route";
 import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
 import {
   buildExplanationPacket,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/event-facts";
 import { parseResultsSnapshot } from "@/lib/intake-storage";
 import { prisma } from "@/lib/prisma";
+import { buildReadinessRoute } from "@/lib/readiness-route";
 import {
   buildEvidenceChecklistForEventFacts,
   type EvidenceChecklistItem
@@ -106,6 +108,12 @@ export default async function ResultsPage({
   const sources = uniqueSources(requirementResults);
   const missingFacts = buildMissingFactRows(eventFacts, checklistItems);
   const nextAction = topItems[0] ?? null;
+  const readinessRoute = buildReadinessRoute({
+    eventFacts,
+    checklistItems,
+    requirementResults,
+    nextActionTitle: nextAction?.title ?? null
+  });
   const explanationPacket = buildExplanationPacket({
     eventFacts,
     checklistItems,
@@ -201,6 +209,11 @@ export default async function ResultsPage({
               </p>
             </Card>
           </section>
+
+          <ReadinessRouteExperience
+            initialEventFacts={eventFacts}
+            initialRoute={readinessRoute}
+          />
 
           <section aria-labelledby="possible-requirements">
             <Card className="p-5">
