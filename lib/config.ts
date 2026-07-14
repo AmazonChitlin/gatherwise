@@ -151,4 +151,21 @@ export const recurrenceOptions = [
   { value: "recurring", label: "Recurring event" }
 ] as const;
 
+export const tentSizeRangeOptions = [
+  { value: "none", label: "No tent or canopy" },
+  { value: "small-under-400-sq-ft", label: "Small, under 400 square feet" },
+  {
+    value: "large-400-sq-ft-or-more",
+    label: "Large, 400 square feet or more"
+  },
+  { value: "not-sure", label: "Not sure yet" }
+] as const;
+
+export const indoorOrOutdoorOptions = [
+  { value: "indoor", label: "Indoor" },
+  { value: "outdoor", label: "Outdoor" },
+  { value: "both", label: "Both indoor and outdoor" },
+  { value: "not-sure", label: "Not sure yet" }
+] as const;
+
 export const supportedUseCases = useCaseOptions.map((option) => option.label);

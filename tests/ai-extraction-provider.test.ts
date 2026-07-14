@@ -46,6 +46,139 @@ test("extracts valid structured facts from a provider result", async () => {
   assert.equal(result.facts.find((fact) => fact.key === "hasAlcohol")?.status, "unknown");
 });
 
+test("normalizes canonical enum labels and values before validation", async () => {
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider: new MockExtractionProvider({
+      type: "success",
+      facts: [
+        { key: "city", status: "extracted", value: "Phoenix" },
+        { key: "county", status: "extracted", value: "Maricopa County" },
+        {
+          key: "useCase",
+          status: "extracted",
+          value: "Private-property parking lot event"
+        },
+        { key: "eventType", status: "extracted", value: "Music or art event" },
+        {
+          key: "propertyUse",
+          status: "extracted",
+          value: "Parking lot or outdoor private space"
+        },
+        { key: "recurrence", status: "extracted", value: "One-time event" },
+        {
+          key: "tentSizeRange",
+          status: "extracted",
+          value: "Large, 400 square feet or more"
+        },
+        { key: "indoorOrOutdoor", status: "extracted", value: "Outdoor" }
+      ],
+      ambiguities: []
+    })
+  });
+
+  const result = await service.extract("Normalize enum-backed values.");
+
+  assert.equal(result.facts.find((fact) => fact.key === "city")?.value, "phoenix");
+  assert.equal(
+    result.facts.find((fact) => fact.key === "county")?.value,
+    "Maricopa County"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "useCase")?.value,
+    "private-property-parking-lot-event"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "eventType")?.value,
+    "music-art-event"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "propertyUse")?.value,
+    "parking-lot"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "recurrence")?.value,
+    "one-time"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "tentSizeRange")?.value,
+    "large-400-sq-ft-or-more"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "indoorOrOutdoor")?.value,
+    "outdoor"
+  );
+});
+
+test("normalizes city aliases and matches case-insensitively", async () => {
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider: new MockExtractionProvider({
+      type: "success",
+      facts: [
+        { key: "city", status: "extracted", value: " az-phoenix " },
+        { key: "eventType", status: "extracted", value: "mUsIc Or ArT EvEnT" },
+        { key: "propertyUse", status: "extracted", value: "parking-lot" },
+        { key: "recurrence", status: "extracted", value: "one-time" }
+      ],
+      ambiguities: []
+    })
+  });
+
+  const result = await service.extract("Normalize city aliases.");
+
+  assert.equal(result.facts.find((fact) => fact.key === "city")?.value, "phoenix");
+  assert.equal(
+    result.facts.find((fact) => fact.key === "eventType")?.value,
+    "music-art-event"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "propertyUse")?.value,
+    "parking-lot"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "recurrence")?.value,
+    "one-time"
+  );
+});
+
+test("keeps canonical enum values unchanged", async () => {
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider: new MockExtractionProvider({
+      type: "success",
+      facts: [
+        { key: "city", status: "extracted", value: "phoenix" },
+        { key: "useCase", status: "extracted", value: "multi-vendor-market" },
+        { key: "eventType", status: "extracted", value: "music-art-event" },
+        { key: "propertyUse", status: "extracted", value: "parking-lot" },
+        { key: "recurrence", status: "extracted", value: "one-time" }
+      ],
+      ambiguities: []
+    })
+  });
+
+  const result = await service.extract("Canonical values should remain intact.");
+
+  assert.equal(result.facts.find((fact) => fact.key === "city")?.value, "phoenix");
+  assert.equal(
+    result.facts.find((fact) => fact.key === "useCase")?.value,
+    "multi-vendor-market"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "eventType")?.value,
+    "music-art-event"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "propertyUse")?.value,
+    "parking-lot"
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "recurrence")?.value,
+    "one-time"
+  );
+});
+
 test("strict extraction object schemas require every declared property", () => {
   const format = buildExtractionResponseFormat();
   const factItems = format.schema.properties.facts.items;
@@ -106,6 +239,44 @@ test("handles contradictory extracted facts by marking them unknown", async () =
   assert.equal(fact?.status, "unknown");
   assert.ok(
     result.ambiguities.some((ambiguity) => ambiguity.fieldKey === "hasAlcohol")
+  );
+});
+
+test("unsupported enum values become unknown instead of crashing extraction", async () => {
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider: new MockExtractionProvider({
+      type: "success",
+      facts: [
+        {
+          key: "city",
+          status: "extracted",
+          value: "Las Vegas"
+        },
+        {
+          key: "expectedAttendance",
+          status: "extracted",
+          value: 300
+        }
+      ],
+      ambiguities: []
+    })
+  });
+
+  const result = await service.extract("Unsupported city should not crash extraction.");
+  const city = result.facts.find((fact) => fact.key === "city");
+  const attendance = result.facts.find((fact) => fact.key === "expectedAttendance");
+
+  assert.equal(city?.status, "unknown");
+  assert.equal(city?.value, null);
+  assert.equal(attendance?.status, "extracted");
+  assert.equal(attendance?.value, 300);
+  assert.ok(
+    result.ambiguities.some(
+      (ambiguity) =>
+        ambiguity.fieldKey === "city" &&
+        ambiguity.reason.includes("could not be matched")
+    )
   );
 });
 
@@ -347,6 +518,73 @@ test("captures safe upstream diagnostics for OpenAI 400 responses", async () => 
   assert.match(logText, /Invalid schema/);
   assert.doesNotMatch(logText, /test-secret-key/);
   assert.doesNotMatch(logText, /Phoenix punk show with vendors/);
+});
+
+test("integration path normalizes extracted enum values and preserves unknown fields", async () => {
+  const description =
+    "I want to hold a Saturday punk show in a private parking lot in Phoenix for about 300 people. There will be amplified music, two food trucks, merchandise vendors, a temporary stage, and no alcohol.";
+  const provider = createOpenAIExtractionProvider({
+    config: {
+      enabled: true,
+      apiKey: "test-key",
+      model: "gpt-test"
+    },
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            facts: [
+              { key: "city", status: "extracted", value: "Phoenix" },
+              { key: "expectedAttendance", status: "extracted", value: 300 },
+              { key: "hasAmplifiedSound", status: "extracted", value: true },
+              { key: "hasFoodTruck", status: "extracted", value: true },
+              { key: "hasRetailSales", status: "extracted", value: true },
+              { key: "hasAlcohol", status: "extracted", value: false },
+              {
+                key: "temporaryStageOrPlatform",
+                status: "extracted",
+                value: true
+              },
+              { key: "parkingLotUse", status: "extracted", value: true },
+              { key: "eventDate", status: "unknown", value: null },
+              { key: "vendorCount", status: "unknown", value: null }
+            ],
+            ambiguities: []
+          })
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+  });
+
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider
+  });
+
+  const result = await service.extract(description);
+
+  assert.equal(result.facts.find((fact) => fact.key === "city")?.value, "phoenix");
+  assert.equal(
+    result.facts.find((fact) => fact.key === "expectedAttendance")?.value,
+    300
+  );
+  assert.equal(
+    result.facts.find((fact) => fact.key === "hasAmplifiedSound")?.value,
+    true
+  );
+  assert.equal(result.facts.find((fact) => fact.key === "hasFoodTruck")?.value, true);
+  assert.equal(
+    result.facts.find((fact) => fact.key === "hasRetailSales")?.value,
+    true
+  );
+  assert.equal(result.facts.find((fact) => fact.key === "hasAlcohol")?.value, false);
+  assert.equal(
+    result.facts.find((fact) => fact.key === "temporaryStageOrPlatform")?.value,
+    true
+  );
+  assert.equal(result.facts.find((fact) => fact.key === "parkingLotUse")?.value, true);
+  assert.equal(result.facts.find((fact) => fact.key === "eventDate")?.status, "unknown");
+  assert.equal(result.facts.find((fact) => fact.key === "vendorCount")?.status, "unknown");
 });
 
 test("requires configuration for the OpenAI provider", () => {

@@ -2,8 +2,10 @@ import { z } from "zod";
 import {
   countyOptions,
   eventTypeOptions,
+  indoorOrOutdoorOptions,
   recurrenceOptions,
   supportedJurisdictions,
+  tentSizeRangeOptions,
   useCaseOptions,
   venueTypeOptions
 } from "@/lib/config";
@@ -29,6 +31,14 @@ const countyValues = countyOptions.map((item) => item.value) as [
   ...string[]
 ];
 const recurrenceValues = recurrenceOptions.map((item) => item.value) as [
+  string,
+  ...string[]
+];
+const tentSizeRangeValues = tentSizeRangeOptions.map((item) => item.value) as [
+  string,
+  ...string[]
+];
+const indoorOrOutdoorValues = indoorOrOutdoorOptions.map((item) => item.value) as [
   string,
   ...string[]
 ];
@@ -141,9 +151,7 @@ export const intakeSchema = z.object({
   commissaryOrBaseOfOperations: optionalBooleanFromQuery,
   believesFoodExemptionMayApply: optionalBooleanFromQuery,
   tentOrCanopy: optionalBooleanFromQuery,
-  tentSizeRange: z
-    .enum(["none", "small-under-400-sq-ft", "large-400-sq-ft-or-more", "not-sure"])
-    .optional(),
+  tentSizeRange: z.enum(tentSizeRangeValues).optional(),
   temporaryStageOrPlatform: optionalBooleanFromQuery,
   cookingHeatSource: optionalBooleanFromQuery,
   propaneOrFuelUse: optionalBooleanFromQuery,
@@ -167,7 +175,7 @@ export const intakeSchema = z.object({
   privateProperty: optionalBooleanFromQuery,
   publicProperty: optionalBooleanFromQuery,
   venueOrPropertyOwnerPermission: optionalBooleanFromQuery,
-  indoorOrOutdoor: z.enum(["indoor", "outdoor", "both", "not-sure"]).optional(),
+  indoorOrOutdoor: z.enum(indoorOrOutdoorValues).optional(),
   recurringEvent: optionalBooleanFromQuery
 });
 

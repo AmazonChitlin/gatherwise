@@ -1,8 +1,10 @@
 import {
   countyOptions,
   eventTypeOptions,
+  indoorOrOutdoorOptions,
   recurrenceOptions,
   supportedJurisdictions,
+  tentSizeRangeOptions,
   useCaseOptions,
   venueTypeOptions
 } from "@/lib/config";
@@ -188,22 +190,9 @@ export function fieldOptions(key: EventFactFieldKey) {
     case "recurrence":
       return [...recurrenceOptions];
     case "tentSizeRange":
-      return [
-        { value: "none", label: "No tent or canopy" },
-        { value: "small-under-400-sq-ft", label: "Small, under 400 square feet" },
-        {
-          value: "large-400-sq-ft-or-more",
-          label: "Large, 400 square feet or more"
-        },
-        { value: "not-sure", label: "Not sure yet" }
-      ];
+      return [...tentSizeRangeOptions];
     case "indoorOrOutdoor":
-      return [
-        { value: "indoor", label: "Indoor" },
-        { value: "outdoor", label: "Outdoor" },
-        { value: "both", label: "Both indoor and outdoor" },
-        { value: "not-sure", label: "Not sure yet" }
-      ];
+      return [...indoorOrOutdoorOptions];
     default:
       return null;
   }
