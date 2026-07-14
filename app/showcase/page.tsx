@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Showcase",
   description:
     "Gatherwise product case study: source-grounded event readiness, deterministic rules, human review, and an Arizona pilot.",
+  alternates: { canonical: "/showcase" },
   openGraph: {
     title: "Gatherwise: Source-Grounded AI Event Readiness",
     description:

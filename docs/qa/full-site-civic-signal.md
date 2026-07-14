@@ -25,12 +25,12 @@
 3. AI extraction is not canceled when switching paths. Resolved on 2026-07-13 with abort and request-generation guards across path changes, retry, cancel, and unmount.
 4. Retail sales is asked twice. Resolved on 2026-07-13 by keeping the question only in Selling and vendors.
 5. BYOB wording asks about permission rather than the event fact. Resolved on 2026-07-13 with factual event wording.
-6. Homepage mockup marks extracted facts as confirmed.
-7. Homepage character count disagrees with the live input.
-8. `metadataBase` points to `gatherwise.local`.
-9. The header has two competing intake links.
-10. Mobile navigation is too tall.
-11. Footer legal text contrast is too low.
+6. Homepage mockup marks extracted facts as confirmed. Resolved on 2026-07-14 by showing extracted facts as `Needs review` and preserving unknown status.
+7. Homepage character count disagrees with the live input. Resolved on 2026-07-14 by aligning the mockup with the 4,000-character intake limit.
+8. `metadataBase` points to `gatherwise.local`. Resolved on 2026-07-14 with validated `NEXT_PUBLIC_SITE_URL` metadata and a safe development fallback.
+9. The header has two competing intake links. Resolved on 2026-07-14 with four informational links and one `Start a route` action.
+10. Mobile navigation is too tall. Resolved on 2026-07-14 with a 64px closed header and compact disclosure menu.
+11. Footer legal text contrast is too low. Resolved on 2026-07-14 with AA-oriented support and legal text treatments.
 12. The Civic Signal style is not yet applied throughout the full product.
 
 ## Scope
@@ -102,3 +102,14 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - Route and CSS contracts cover semantic landmarks and headings, safe external links, 44-pixel controls, visible focus, mobile reflow, and reduced motion. The in-app browser could not reach this workspace’s localhost in the current session, so no visual-browser pass is claimed for this task.
 - Local production HTTP checks returned `200` for `/showcase`, `/how-it-works`, `/sources`, `/about`, and `/api/health`. Host-side output contained no server errors during those requests.
 - Verification: `npm test` passed 268 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.
+
+## Global shell and metadata verification
+
+- The header now exposes How it works, Sources, About, and Showcase as text navigation plus one primary `Start a route` action. `Plan an event` is no longer duplicated in the header.
+- At 880px and below, the closed sticky header remains 64px tall. Its compact disclosure uses `aria-expanded`, `aria-controls`, a two-column link layout, a 44px menu control, focus transfer to the first link, Escape-to-close, and focus return to the trigger.
+- Footer navigation, pilot scope, and legal text now use higher-contrast paper treatments and minimum sizes of 13px to 14px. The oversized wordmark remains decorative and `aria-hidden`; the informational-guidance notice remains visible.
+- `NEXT_PUBLIC_SITE_URL` is parsed through a validated HTTP(S)-only resolver that rejects credentials and malformed values, normalizes to the public origin, and falls back to `http://localhost:3000` for local tests and development.
+- The production build used `https://gatherwise-production.up.railway.app`. Local production HTML emitted that origin for Open Graph metadata and route-specific canonical links for `/`, `/showcase`, `/how-it-works`, `/sources`, and `/about` without inventing a social image.
+- The homepage extraction mockup now labels extracted facts `Needs review`, preserves the visibly unknown property fact, and shows the same 4,000-character limit as the live intake.
+- Existing skip-link, heading, landmark, icon-plus-text status, visible-focus, 44px target, and reduced-motion contracts remain covered. The in-app browser remained isolated from this workspace localhost, so interaction checks are code-, test-, build-, and production-HTML-based rather than a claimed visual-browser pass.
+- Verification: `npm test` passed 275 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.

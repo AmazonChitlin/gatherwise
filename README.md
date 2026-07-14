@@ -66,6 +66,7 @@ Configured in `.env.example`:
 
 ```bash
 DATABASE_URL="file:./dev.db"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 PERSIST_INTAKE_SUBMISSIONS="true"
 GATHERWISE_AI_EXTRACTION_ENABLED="false"
 OPENAI_API_KEY=""
@@ -83,6 +84,7 @@ GATHERWISE_AI_EXPLANATION_MAX_OUTPUT_TOKENS="900"
 
 Notes:
 
+- `NEXT_PUBLIC_SITE_URL` sets canonical and social metadata. Use the deployed HTTPS origin in production.
 - `OPENAI_API_KEY` is server-side only.
 - AI can be fully disabled and the manual path still works.
 - Live evaluation is opt-in and should not be run by default.

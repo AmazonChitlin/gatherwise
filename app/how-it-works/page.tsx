@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "How It Works",
   description:
     "Follow the Gatherwise route from event description and human review to deterministic evaluation and official evidence.",
+  alternates: { canonical: "/how-it-works" },
 };
 
 const steps = [

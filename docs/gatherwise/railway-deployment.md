@@ -66,6 +66,7 @@ Why `/data`:
 Enter these service variables:
 
 - `RAILPACK_INSTALL_CMD=npm ci`
+- `NEXT_PUBLIC_SITE_URL=https://gatherwise-production.up.railway.app`
 - `PERSIST_INTAKE_SUBMISSIONS=false`
 
 Leave these unset for the public deterministic deployment:

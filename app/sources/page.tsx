@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "Sources",
   description:
     "Browse the official state, county, and city source records reviewed for the Gatherwise Arizona pilot.",
+  alternates: { canonical: "/sources" },
 };
 
 const jurisdictionOrder = ["state", "county", "city"] as const;

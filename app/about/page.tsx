@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "Why Gatherwise exists, how its source-grounded Arizona pilot works, and where its current boundaries remain.",
+  alternates: { canonical: "/about" },
 };
 
 const principles = [
