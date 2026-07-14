@@ -8,6 +8,7 @@ import {
   ExtractionRefusalError,
   ExtractionTimeoutError,
   MockExtractionProvider,
+  buildExtractionResponseFormat,
   createExtractionService,
   createOpenAIExtractionProvider,
   readEventExtractionConfig
@@ -43,6 +44,32 @@ test("extracts valid structured facts from a provider result", async () => {
   assert.equal(result.facts.find((fact) => fact.key === "eventName")?.status, "extracted");
   assert.equal(result.facts.find((fact) => fact.key === "vendorCount")?.value, 12);
   assert.equal(result.facts.find((fact) => fact.key === "hasAlcohol")?.status, "unknown");
+});
+
+test("strict extraction object schemas require every declared property", () => {
+  const format = buildExtractionResponseFormat();
+  const factItems = format.schema.properties.facts.items;
+  const ambiguityItems = format.schema.properties.ambiguities.items;
+
+  assert.deepEqual(
+    [...factItems.required].sort(),
+    Object.keys(factItems.properties).sort()
+  );
+  assert.deepEqual(
+    [...ambiguityItems.required].sort(),
+    Object.keys(ambiguityItems.properties).sort()
+  );
+});
+
+test("extraction schema uses nullable evidence and ambiguity field keys", () => {
+  const format = buildExtractionResponseFormat();
+  const factItems = format.schema.properties.facts.items;
+  const ambiguityItems = format.schema.properties.ambiguities.items;
+
+  assert.deepEqual(factItems.properties.evidenceText.type, ["string", "null"]);
+  assert.deepEqual(ambiguityItems.properties.evidenceText.type, ["string", "null"]);
+  assert.deepEqual(ambiguityItems.properties.fieldKey.type, ["string", "null"]);
+  assert.equal(ambiguityItems.properties.fieldKey.enum.includes(null), true);
 });
 
 test("fills omitted facts as unknown", async () => {
@@ -212,6 +239,114 @@ test("rejects malformed provider output", async () => {
     () => service.extract("Short event."),
     ExtractionMalformedOutputError
   );
+});
+
+test("parses nullable ambiguity fieldKey and evidence text from structured output", async () => {
+  const provider = createOpenAIExtractionProvider({
+    config: {
+      enabled: true,
+      apiKey: "test-key",
+      model: "gpt-test"
+    },
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            facts: [
+              {
+                key: "eventName",
+                status: "extracted",
+                value: "Phoenix Punk Show",
+                evidenceText: null
+              }
+            ],
+            ambiguities: [
+              {
+                fieldKey: null,
+                reason: "The property type is unclear.",
+                evidenceText: null
+              }
+            ]
+          })
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+  });
+
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider
+  });
+
+  const result = await service.extract("Phoenix Punk Show at an unclear location.");
+  const eventName = result.facts.find((fact) => fact.key === "eventName");
+
+  assert.equal(eventName?.evidenceText, undefined);
+  assert.deepEqual(result.ambiguities, [
+    {
+      fieldKey: undefined,
+      reason: "The property type is unclear.",
+      evidenceText: undefined
+    }
+  ]);
+});
+
+test("captures safe upstream diagnostics for OpenAI 400 responses", async () => {
+  const description =
+    "Phoenix punk show with vendors and a request body that should never appear in logs.";
+  const logged: unknown[] = [];
+  const provider = createOpenAIExtractionProvider({
+    config: {
+      enabled: true,
+      apiKey: "test-secret-key",
+      model: "gpt-test"
+    },
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "invalid_json_schema",
+            param: "text.format.schema",
+            message:
+              "Invalid schema for response_format 'gatherwise_event_fact_extraction'."
+          }
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      )
+  });
+
+  const service = createExtractionService({
+    config: { enabled: true },
+    provider,
+    logger: {
+      error(metadata) {
+        logged.push(metadata);
+      }
+    }
+  });
+
+  await assert.rejects(
+    () => service.extract(description),
+    (error: unknown) => {
+      assert.ok(error instanceof ExtractionProviderError);
+      assert.match(error.message, /status 400/);
+      assert.match(error.message, /invalid_json_schema/);
+      assert.match(error.message, /text\.format\.schema/);
+      assert.match(error.message, /Invalid schema/);
+      assert.doesNotMatch(error.message, /test-secret-key/);
+      assert.doesNotMatch(error.message, /Phoenix punk show with vendors/);
+      return true;
+    }
+  );
+
+  assert.equal(logged.length, 1);
+  const logText = JSON.stringify(logged[0]);
+  assert.match(logText, /"upstreamStatus":400/);
+  assert.match(logText, /"upstreamCode":"invalid_json_schema"/);
+  assert.match(logText, /"upstreamParam":"text\.format\.schema"/);
+  assert.match(logText, /Invalid schema/);
+  assert.doesNotMatch(logText, /test-secret-key/);
+  assert.doesNotMatch(logText, /Phoenix punk show with vendors/);
 });
 
 test("requires configuration for the OpenAI provider", () => {

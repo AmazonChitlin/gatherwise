@@ -16,7 +16,22 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 1_200;
 export class ExtractionConfigError extends Error {}
 export class ExtractionInputLimitError extends Error {}
 export class ExtractionTimeoutError extends Error {}
-export class ExtractionProviderError extends Error {}
+export type ExtractionProviderDiagnostics = {
+  upstreamStatus?: number;
+  upstreamCode?: string;
+  upstreamParam?: string;
+  upstreamMessage?: string;
+};
+
+export class ExtractionProviderError extends Error {
+  constructor(
+    message: string,
+    readonly diagnostics: ExtractionProviderDiagnostics = {}
+  ) {
+    super(message);
+    this.name = "ExtractionProviderError";
+  }
+}
 export class ExtractionRefusalError extends Error {}
 export class ExtractionMalformedOutputError extends Error {}
 export class ExtractionRequestLimitError extends Error {}
@@ -50,6 +65,10 @@ export type ExtractionLogMetadata = {
   extractedCount?: number;
   ambiguityCount?: number;
   retryCount?: number;
+  upstreamStatus?: number;
+  upstreamCode?: string;
+  upstreamParam?: string;
+  upstreamMessage?: string;
 };
 
 export type ExtractionLogger = {
@@ -320,7 +339,10 @@ export function createExtractionService(options: {
                 : "failure",
             durationMs: Date.now() - startedAt,
             descriptionChars: description.length,
-            retryCount: attempt - 1
+            retryCount: attempt - 1,
+            ...(error instanceof ExtractionProviderError
+              ? error.diagnostics
+              : {})
           });
 
           if (error instanceof Error) {
@@ -352,14 +374,14 @@ export function buildExtractionResponseFormat() {
           items: {
             type: "object",
             additionalProperties: false,
-            required: ["key", "status", "value"],
+            required: ["key", "status", "value", "evidenceText"],
             properties: {
               key: { type: "string", enum: eventFactFieldKeys },
               status: { type: "string", enum: ["extracted", "unknown"] },
               value: {
                 type: ["string", "number", "boolean", "null"]
               },
-              evidenceText: { type: "string" }
+              evidenceText: { type: ["string", "null"] }
             }
           }
         },
@@ -368,11 +390,14 @@ export function buildExtractionResponseFormat() {
           items: {
             type: "object",
             additionalProperties: false,
-            required: ["reason"],
+            required: ["fieldKey", "reason", "evidenceText"],
             properties: {
-              fieldKey: { type: "string", enum: eventFactFieldKeys },
+              fieldKey: {
+                type: ["string", "null"],
+                enum: [...eventFactFieldKeys, null]
+              },
               reason: { type: "string" },
-              evidenceText: { type: "string" }
+              evidenceText: { type: ["string", "null"] }
             }
           }
         }
@@ -455,15 +480,14 @@ export function createOpenAIExtractionProvider(options?: {
         );
       }
 
-      if (response.status === 429 || response.status >= 500) {
-        throw new ExtractionProviderError(
-          `AI extraction upstream failed with status ${response.status}.`
-        );
-      }
-
       if (!response.ok) {
+        const diagnostics = await readOpenAIErrorDiagnostics(response);
         throw new ExtractionProviderError(
-          `AI extraction request failed with status ${response.status}.`
+          formatOpenAIExtractionErrorMessage(response.status, diagnostics),
+          {
+            upstreamStatus: response.status,
+            ...diagnostics
+          }
         );
       }
 
@@ -692,6 +716,7 @@ function parseRawAmbiguity(value: unknown): ExtractionAmbiguity {
 
   if (
     ambiguity.fieldKey !== undefined &&
+    ambiguity.fieldKey !== null &&
     (!eventFactFieldKeys.includes(ambiguity.fieldKey as EventFactFieldKey) ||
       typeof ambiguity.fieldKey !== "string")
   ) {
@@ -699,13 +724,81 @@ function parseRawAmbiguity(value: unknown): ExtractionAmbiguity {
   }
 
   return {
-    fieldKey: ambiguity.fieldKey as EventFactFieldKey | undefined,
+    fieldKey:
+      ambiguity.fieldKey === null
+        ? undefined
+        : (ambiguity.fieldKey as EventFactFieldKey | undefined),
     reason: ambiguity.reason,
     evidenceText:
       typeof ambiguity.evidenceText === "string"
         ? ambiguity.evidenceText
         : undefined
   };
+}
+
+async function readOpenAIErrorDiagnostics(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      const payload = (await response.json()) as {
+        error?: {
+          code?: unknown;
+          param?: unknown;
+          message?: unknown;
+        };
+      };
+
+      return {
+        upstreamCode:
+          typeof payload.error?.code === "string"
+            ? payload.error.code
+            : undefined,
+        upstreamParam:
+          typeof payload.error?.param === "string"
+            ? payload.error.param
+            : undefined,
+        upstreamMessage:
+          typeof payload.error?.message === "string"
+            ? sanitizeUpstreamMessage(payload.error.message)
+            : undefined
+      } satisfies ExtractionProviderDiagnostics;
+    }
+
+    const text = await response.text();
+    return {
+      upstreamMessage: text
+        ? sanitizeUpstreamMessage(text)
+        : undefined
+    } satisfies ExtractionProviderDiagnostics;
+  } catch {
+    return {};
+  }
+}
+
+function sanitizeUpstreamMessage(message: string) {
+  return message.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function formatOpenAIExtractionErrorMessage(
+  status: number,
+  diagnostics: ExtractionProviderDiagnostics
+) {
+  const parts = [`AI extraction request failed with status ${status}.`];
+
+  if (diagnostics.upstreamCode) {
+    parts.push(`code=${diagnostics.upstreamCode}.`);
+  }
+
+  if (diagnostics.upstreamParam) {
+    parts.push(`param=${diagnostics.upstreamParam}.`);
+  }
+
+  if (diagnostics.upstreamMessage) {
+    parts.push(`message=${diagnostics.upstreamMessage}`);
+  }
+
+  return parts.join(" ");
 }
 
 function parseInteger(value: string | undefined, fallback: number) {
