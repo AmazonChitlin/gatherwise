@@ -81,3 +81,13 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - Browser checks at 320, 375, 768, 1024, and 1440 CSS pixels found no horizontal overflow and a 44-pixel minimum control height. The planning rail is sticky only at wide desktop widths.
 - Browser console inspection found no warnings or errors. Reduced-motion and responsive intake contracts are covered by component tests.
 - Verification: `npm test` passed 256 tests; type checking, production build, and the 36-scenario offline evaluation are recorded in the final task verification.
+
+## Results workspace verification
+
+- `/results` now presents one Civic Signal planning workspace: event mast, next-action waypoint, deterministic Readiness Route, requirement evidence, missing-detail forks, planning order, secondary explanation, Evidence Trail, official sources, simulator, and limitations.
+- Official source links and review metadata remain adjacent to their requirement results; native disclosures preserve the fact-to-rule-to-source reading order.
+- Unsupported geography branches to a dedicated stop-state before the supported mast, requirements, Evidence Trail, or simulator can render.
+- The Event Change Simulator retains its request payload, comparison groups, reset behavior, and live feedback while using full-width mobile controls.
+- Browser checks passed at 1440 and 320 CSS pixels with no horizontal overflow, no controls below 44 pixels, and no console warnings or errors. A Phoenix-to-Tempe comparison returned a deterministic changed-fact line and added-requirement group.
+- Supported, unsupported, zero-rule, several-rule, missing-fact, source-link, fallback explanation, disclosure, responsive DOM, and simulator contracts are covered by the existing and expanded test suite.
+- Verification: `npm test` passed 261 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.
