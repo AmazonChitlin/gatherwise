@@ -1,417 +1,288 @@
-# Gatherwise MVP
+# Gatherwise
 
-Gatherwise is a Next.js MVP for local event readiness.
+Gatherwise is a source-grounded event-readiness application for organizers, vendors, venues, and recruiters reviewing the Handshake showcase project.
 
 Brand:
 
-- Name: Gatherwise
+- Product: Gatherwise
 - Tagline: Ready. Set. Local.
-- Core message: Get your local event ready before you set up.
+- Subtitle: AI-powered event readiness for organizers, vendors, and venues
+- Scope: Arizona pilot
 
-Gatherwise helps vendors, food trucks, artists, pop-up businesses, small event organizers, venues, and market hosts understand what permits, licenses, deadlines, documents, contacts, and red flags may apply before a local event.
+## Product Overview
 
-## What Gatherwise Does
+Gatherwise helps a user move from messy event details to a source-backed readiness summary without pretending to make a legal determination.
 
-- Collects practical intake details about a local event.
-- Saves intake submissions to a local SQLite database.
-- Matches intake answers against source-linked rule records.
-- Displays a basic checklist, timeline, red flags, agency contacts, and official source links.
-- Uses cautious wording: `Likely required`, `May be required`, and `Confirm with agency`.
+The current branch supports:
 
-## What Gatherwise Does Not Do
+- a guided intake path
+- a natural-language extraction path with human review
+- deterministic rule evaluation
+- official-source linking
+- grounded explanation with deterministic fallback
+- the Readiness Route
+- the Event Change Simulator
+- public fictional demo scenarios
+- a recruiter-facing `/showcase` route
 
-- Gatherwise is not legal advice.
-- Gatherwise does not submit permits.
-- Gatherwise does not guarantee compliance.
-- Gatherwise does not confirm final legal requirements.
-- Gatherwise does not replace the relevant agency.
-- Users should confirm requirements, deadlines, fees, forms, and final instructions with the relevant agency.
+## Architecture
 
-Disclaimer language used in the app: **Informational guidance only, not legal advice.**
+The application keeps a clear authority boundary:
 
-## Tech Stack
+1. A user describes an event or completes the guided form.
+2. AI may extract structured event facts from natural language.
+3. The user reviews or edits those facts.
+4. Deterministic rules decide which requirements may apply.
+5. Official source records provide the trusted evidence layer.
+6. AI may explain the verified result, but it does not invent rules, agencies, thresholds, fees, or deadlines.
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Zod
-- Prisma
-- SQLite for local development
-- Node test runner through `tsx --test`
+Core implementation areas:
 
-## Local Setup
+- `app/`: Next.js App Router routes and API endpoints
+- `components/`: shared UI, intake experience, and readiness route
+- `lib/event-facts.ts`: canonical event-facts model and evidence chain helpers
+- `lib/rule-engine.ts`: deterministic rule matching and evidence-aware results
+- `lib/ai/extraction.ts`: structured event-fact extraction provider
+- `lib/ai/explanations.ts`: grounded explanation provider and fallback
+- `lib/readiness-route.ts`: route and change-simulator logic
+- `prisma/`: Prisma schema, migrations, and seed data
+
+## Setup
 
 ```bash
 npm install
 cp .env.example .env
 npm run prisma:generate
-npm run prisma:migrate
+npx prisma migrate deploy
 npm run prisma:seed
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-## Common Commands
+## Environment Variables
 
-Development server:
-
-```bash
-npm run dev
-```
-
-Run tests:
-
-```bash
-npm test
-```
-
-Typecheck:
-
-```bash
-npm run typecheck
-```
-
-Production build:
-
-```bash
-npm run build
-```
-
-## Demo Readiness
-
-Before showing the MVP, review `docs/demo-readiness.md` for local setup steps,
-recommended demo scenarios, known limitations, and claims to avoid.
-
-## Prisma And Data Setup
-
-Local development uses SQLite through:
+Configured in `.env.example`:
 
 ```bash
 DATABASE_URL="file:./dev.db"
+PERSIST_INTAKE_SUBMISSIONS="true"
+GATHERWISE_AI_EXTRACTION_ENABLED="false"
+OPENAI_API_KEY=""
+GATHERWISE_AI_MODEL=""
+GATHERWISE_AI_TIMEOUT_MS="8000"
+GATHERWISE_AI_MAX_INPUT_CHARS="4000"
+GATHERWISE_AI_REQUEST_LIMIT="25"
+GATHERWISE_AI_MAX_OUTPUT_TOKENS="1200"
+GATHERWISE_AI_EXPLANATION_ENABLED="false"
+GATHERWISE_AI_EXPLANATION_MODEL=""
+GATHERWISE_AI_EXPLANATION_TIMEOUT_MS="8000"
+GATHERWISE_AI_EXPLANATION_REQUEST_LIMIT="25"
+GATHERWISE_AI_EXPLANATION_MAX_OUTPUT_TOKENS="900"
 ```
 
-Create or apply migrations:
+Notes:
+
+- `OPENAI_API_KEY` is server-side only.
+- AI can be fully disabled and the manual path still works.
+- Live evaluation is opt-in and should not be run by default.
+
+## Database Setup
+
+Gatherwise keeps the approved Prisma + SQLite architecture for the Handshake branch.
+
+Common commands:
 
 ```bash
-npm run prisma:migrate
+npm run prisma:generate
+npx prisma migrate deploy
+npm run prisma:seed
 ```
 
-Reset the local database:
+For local schema iteration, `npm run prisma:migrate` remains useful during development. For a clean environment or release setup, use `npx prisma migrate deploy` so the checked-in migrations apply reproducibly.
+
+For a reset:
 
 ```bash
 npm run prisma:reset
 ```
 
-Seed data:
+Important constraints:
 
-```bash
-npm run prisma:seed
-```
-
-Seed data lives in `prisma/seed-data/rules.ts`. The seed importer lives in `prisma/seed.ts`.
-
-Current user-facing seed rules are verified starter records for Arizona TPT, Maricopa County food guidance, and the launch-city batches. Source inventory records still include research gaps and inventory-only pages that should not be treated as checklist rules until converted.
-
-## Project Structure
-
-- `app/`: App Router pages and API routes.
-- `components/`: Reusable UI components.
-- `lib/config.ts`: City, county, use-case, event-type, property, and recurrence options.
-- `lib/schemas.ts`: Zod intake validation.
-- `lib/prisma.ts`: Prisma client setup.
-- `lib/rule-engine.ts`: Isolated rule matching and checklist generation.
-- `lib/results-helpers.ts`: Results formatting, grouping, timeline, and red flag helpers.
-- `lib/future-products.ts`: Non-functional future paid product copy.
-- `lib/types.ts`: Shared domain types.
-- `prisma/schema.prisma`: Database schema.
-- `prisma/seed-data/rules.ts`: Readable seed catalog.
-- `tests/`: Fast unit tests.
-- `PROJECT_CONTEXT.md`: Stable product and architecture context.
-
-## Data Model
-
-The Prisma schema includes:
-
-- `Jurisdiction`: city, county, and state-level geography.
-- `Agency`: agency contact details connected to jurisdictions.
-- `UseCase`: MVP event/use-case categories.
-- `RuleRecord`: source-linked rules with structured trigger fields.
-- `IntakeSubmission`: saved user intake answers.
-- `GeneratedChecklistItem`: future persisted generated checklist rows.
-- `FutureProductOrder`: placeholder for future paid products without payment processing.
-
-## Intake Flow
-
-The intake form collects:
-
-- City and county
-- Use case and event type
-- Public/private property or venue type
-- Expected attendance and vendor count
-- Event date
-- One-time or recurring status
-- Food service, food truck, retail sales, alcohol, amplified sound
-- Temporary structures, generator use, open flame
-- Street, sidewalk, or parking impacts
-- Refined optional details for food handling, alcohol, temporary structures, traffic, signage/promotion, and park/property use
-
-Validation lives in `lib/schemas.ts` and uses Zod. The browser validates before submit, and `app/api/intake/route.ts` validates again on the server before saving.
-
-Valid submissions are saved to `IntakeSubmission`. The API returns an `intakeId`, and the user is routed to:
-
-```text
-/results?intakeId=...
-```
-
-The intake form does not show permit conclusions.
-
-## Rule Engine Overview
-
-Rule matching lives in `lib/rule-engine.ts`. UI components and page components should not contain city-specific permit logic.
-
-The engine:
-
-- Accepts a validated intake object.
-- Loads active rule records from Prisma.
-- Parses each rule's structured `triggerFields`.
-- Compares trigger fields against normalized intake facts.
-- Excludes non-matching rules.
-- Returns checklist items with requirement level, source URL, jurisdiction, lead time, confidence, and agency info.
-- Sorts by requirement urgency, lead time, jurisdiction type, confidence, and title.
-
-Supported trigger examples include:
-
-- `jurisdiction_code`
-- `city`
-- `county`
-- `state`
-- `use_case`
-- `event_type`
-- `food_service`
-- `food_truck`
-- `retail_sales`
-- `alcohol`
-- `amplified_sound`
-- `public_property`
-- `private_property`
-- `vendor_count_min`
-- `expected_attendance_min`
-- `temporary_structure`
-- `generator_use`
-- `open_flame`
-- `multi_vendor_event`
-- `recurring_event`
-
-String trigger comparisons are normalized for casing and spacing before matching. For example, `Phoenix`, `phoenix`, and ` PHOENIX ` compare the same. Empty trigger objects do not match any intake unless a rule explicitly sets `global: true`. Invalid trigger JSON is skipped by the rule engine instead of matching every result.
-
-## Results Page Overview
-
-The results page:
-
-- Loads the saved intake by `intakeId`.
-- Calls the rule engine.
-- Shows the event summary.
-- Shows matched checklist items grouped by jurisdiction.
-- Shows a timeline based on `leadTimeDays`.
-- Shows red flags.
-- Shows agency contacts.
-- Shows official source links.
-- Shows the visible disclaimer.
-- Shows a disabled CTA for future paid products.
-
-The results page does not claim Gatherwise has confirmed legal requirements. It does not say the user is compliant.
-
-## Adding Future Jurisdictions
-
-To add a future jurisdiction:
-
-1. Add the city/county/state option to `lib/config.ts` if users should select it in intake.
-2. Assign a normalized `jurisdictionCode`, such as `az`, `az-maricopa`, or `az-phoenix`.
-3. Add jurisdiction details to seed rules in `prisma/seed-data/rules.ts`.
-4. Use the same normalized code in `jurisdiction.code` and, when useful, in `triggers.jurisdiction_code`.
-5. Run `npm run prisma:seed`.
-
-Adding a jurisdiction should not require changing UI page logic.
-
-## Adding Future Rules
-
-Seed rules live in `prisma/seed-data/rules.ts`.
-
-Review official source inventory records before adding rules. Source inventory lives in `prisma/seed-data/source-inventory.ts` and is documented in `docs/source-inventory.md`. Source inventory records are not checklist rules; they are the review queue for official pages that may later become rule records.
-
-To add a rule, add one object to `ruleSeedData` with:
-
-- `jurisdiction`: name, type, stable code, city/county/state.
-- `agency`: agency name plus phone, email, or URL if known.
-- `source`: official source name and URL.
-- `lastVerified`: date string like `2026-06-23`, or `null` if not verified.
-- `confidence`: `low`, `medium`, or `high`.
-- `triggers`: structured trigger fields.
-- `leadTimeDays`: suggested planning lead time.
-- `plainEnglishSummary`: practical wording for users.
-- `requirementLevel`: `likely required`, `may be required`, or `confirm with the agency`.
-- `isSample`: `true` for sample/unverified rules.
-- `verificationStatus`: `verified` for source-checked rules, `sample_unverified` for placeholders, or `needs_review` for rule candidates that need more review.
-- `adminNote`: internal notes for future source verification.
-
-Seed rules are validated with Zod in `prisma/seed-validation.ts` before they are inserted. Validation catches missing source URLs, missing requirement levels, missing jurisdictions, missing sample/verification status, unsupported trigger keys, and empty trigger objects unless `global: true` is set.
-
-Adding a normal rule should not require changing the rule engine, UI components, or page logic. Only update `lib/types.ts`, `prisma/seed-validation.ts`, and `lib/rule-engine.ts` when adding a brand-new trigger type the engine does not understand yet.
-
-## Official Source Inventory
-
-The official source inventory is config-backed, not database-backed. It tracks source IDs, jurisdiction codes, agencies, URLs, source categories, use-case relevance, notes, verification status, last checked dates, official-source status, and whether rules have been created.
-
-Missing sources are tracked with `verificationStatus: "needs_research"`, `sourceUrl: null`, and `isOfficial: false`. This keeps research gaps visible without pretending a source is verified.
-
-Source records validate through `prisma/source-inventory-validation.ts` and related tests. A future admin workflow or CMS can move this inventory into the database; no migration was added for this task.
-
-## Source Verification Workflow
-
-Gatherwise does not scrape government websites and does not automatically refresh source data. Rule verification is intentionally lightweight for the MVP.
-
-Each `RuleRecord` supports:
-
-- `sourceUrl`: official source link when available.
-- `sourceName`: readable source name shown to users.
-- `lastVerified`: the date a human checked the official source, or `null`.
-- `confidence`: `low`, `medium`, or `high`.
-- `isSample`: `true` when the rule is placeholder/sample data.
-- `verificationStatus`: source review state.
-- `notes`: internal verification notes from seed `adminNote`.
-- Agency contact fields: `agencyName`, `agencyPhone`, `agencyEmail`, and `agencyUrl`.
-
-Use these verification statuses:
-
-- `sample_unverified`: placeholder data used for MVP testing. Keep `isSample: true` and `lastVerified: null`.
-- `needs_review`: a real rule candidate that still needs human review or has stale/incomplete source details.
-- `verified`: a human checked the official source. Set `isSample: false` and update `lastVerified`.
-- `inactive`: exclude a rule from matching without deleting it.
-
-To mark a sample rule, use:
-
-```ts
-isSample: true,
-verificationStatus: "sample_unverified",
-lastVerified: null,
-confidence: "low",
-adminNote: "Sample/unverified seed data for schema development only."
-```
-
-To mark a rule verified, only do so after a human checks the official source:
-
-```ts
-isSample: false,
-verificationStatus: "verified",
-lastVerified: "2026-06-23"
-```
-
-Confidence should describe source clarity, not legal certainty:
-
-- `low`: sample data, uncertain interpretation, missing agency confirmation, or incomplete source details.
-- `medium`: official source reviewed, but details may vary by event facts or agency interpretation.
-- `high`: official source is current and clearly supports the plain-English guidance. Users still need to confirm with the agency.
-
-The results page labels sample or unverified items in plain English. Sample items show: `This item is based on sample data and needs official verification.` All verification states remind users to confirm with the listed agency before relying on the guidance.
+- existing migrations are preserved
+- verified rules and source records are reproducible from seed data
+- demo flows can remain stateless even when persistence is enabled elsewhere
 
 ## Tests
 
-Run:
+Repository-defined checks:
 
 ```bash
 npm test
+npm run typecheck
+npm run build
 ```
 
-Current tests cover:
+Current automated coverage includes:
 
-- Intake validation.
-- Readable validation errors.
-- Rule matching by city and food involvement.
-- Excluding non-matching rules.
-- Normalized trigger matching and invalid/empty trigger safety.
-- Seed rule validation.
-- Lead-time sorting.
-- Results helper formatting for timelines, grouping, confidence, requirement labels, verification labels, and red flags.
+- unit tests
+- integration-style tests for rule and intake behavior
+- seed and source validation
+- evidence trail and route tests
+- hardening regressions
+- brand and IA regression checks
 
-Not covered yet:
+There is currently no dedicated lint script in the repository.
 
-- End-to-end browser flows.
-- Visual regression testing.
-- Payment behavior.
-- Authentication.
-- PDF or file generation.
-- Full coverage of every possible trigger field.
+## Evaluation
 
-## MVP Audit And QA
+Offline evaluation command:
 
-The original post-scaffold audit lives in `docs/audit.md`. Later QA passes supersede parts of that historical audit as verified Arizona, Maricopa County, and launch-city rule batches were added.
+```bash
+npm run eval:gatherwise
+```
 
-Current QA and demo docs:
+Live model-backed evaluation:
 
-- `docs/source-inventory.md`: official source inventory and remaining research gaps.
-- `docs/intake-refinement.md`: refined intake fields and active/future-facing triggers.
-- `docs/cross-jurisdiction-qa.md`: city/county/state stacking checks.
-- `docs/launch-coverage-qa.md`: launch scenario coverage by jurisdiction and use case.
-- `docs/demo-readiness.md`: local demo checklist, scenarios, limitations, and what not to claim.
-- `docs/ux-playbook.md`: UX direction for homepage, intake, results, trust language, visual patterns, and future paid messaging.
+```bash
+npm run eval:gatherwise:live
+```
 
-## Data-Readiness Cleanup
+Current offline evaluation snapshot:
 
-The data-readiness cleanup removed unused scaffold-era rule files, added normalized jurisdiction codes to intake submissions and rule records, hardened rule matching, and added Zod validation for seed rule data.
+- 36 synthetic scenarios
+- 99.8% fixture-normalization extraction accuracy across 1944 asserted fields
+- 28/28 expected unknowns preserved
+- 100% rule-ID, source-ID, and boundary agreement across 35 checked scenarios
+- 7/7 reliability checks passed
 
-The current jurisdiction code pattern is:
+Artifacts:
 
-- `az` for Arizona state-level rules.
-- `az-maricopa` for Maricopa County rules.
-- `az-phoenix`, `az-tempe`, and similar city-level codes for city rules.
+- `reports/gatherwise/latest.json`
+- `reports/gatherwise/latest.md`
+- `docs/gatherwise/evaluation-report.md`
+- `docs/gatherwise/evaluation-methodology.md`
 
-Prisma enum conversion was deferred. The schema still stores values such as `requirementLevel`, `confidence`, `jurisdictionType`, and `verificationStatus` as strings for SQLite simplicity, while seed validation enforces allowed values. Revisit Prisma enums during the Postgres migration review.
+## Design System
 
-No lint script was added yet because the project does not currently include ESLint dependencies or config, and this cleanup did not justify a tooling detour. TypeScript and tests remain the active local checks.
+The chosen visual direction is **Local Signal**.
 
-Verified starter rule coverage now exists for Arizona TPT, Maricopa County food guidance, Phoenix, Tempe, Mesa, Scottsdale, Glendale, Peoria, Chandler, and Gilbert. Remaining source gaps are tracked in `docs/source-inventory.md`.
+Design-system docs:
 
-## Current MVP Limitations
+- `docs/gatherwise/design-system.md`
+- `docs/gatherwise/color-system.md`
+- `docs/gatherwise/typography-system.md`
+- `docs/gatherwise/layout-system.md`
+- `docs/gatherwise/motion-system.md`
 
-- Rule coverage is still starter coverage, not a complete permit map.
-- Source data is not scraped or automatically refreshed.
-- Results are only as good as the current verified seed rule records and source review notes.
-- Some refined intake fields are collected before verified rules use them directly.
-- No admin UI exists for editing rules.
-- No user accounts exist.
-- No payments exist.
-- No generated PDFs or downloadable files exist.
-- No document upload or vault exists.
-- No venue listing system exists.
-- No marketplace or referral workflow exists.
+The interaction model stays behaviorally familiar while using route, evidence, and status motifs to make source-backed reasoning easier to scan.
 
-## Future Expansion Points
+## AI Boundaries
 
-These are intentional extension seams, not built features:
+AI may:
 
-- Additional cities: add intake options in `lib/config.ts`, seed jurisdiction/rule records in `prisma/seed-data/rules.ts`, and avoid city-specific logic in pages.
-- Additional counties: add county options and county-level rule records with `jurisdiction.type: "county"` and county trigger fields.
-- Other states: widen the state typing in `lib/config.ts`, add state-level seed data, review validation defaults, and update `DATABASE_URL` only when changing database providers.
-- Paid downloadable roadmap: expand `lib/future-products.ts` and results-page CTA only when payment and document generation are intentionally added.
-- Vendor packet: keep future packet content derived from matched checklist items, agency contacts, timelines, and document prep notes.
-- Organizer subscription: add auth, billing, and account models only when subscription work is explicitly scoped.
-- Vendor document vault: add file storage, permissions, and document metadata only when upload/storage requirements are defined.
-- Venue listings: add listing models and public pages only after venue data ownership, moderation, and source rules are defined.
-- Referral or lead-generation marketplace: add consent, tracking, partner records, and compliance review before any lead flow is built.
-- Done-with-you consulting intake: add a separate consulting request flow only when human follow-up operations are ready.
-- Postgres migration: the Prisma schema is designed to move from SQLite to Postgres with a datasource change and migration review, not a rewrite.
+- extract event facts from a user description
+- mark facts as extracted or unknown
+- surface ambiguity for review
+- explain deterministic results using a trusted evidence packet
 
-## Future Revenue Features Not Yet Built
+AI may not:
 
-These are planned possibilities, not live features:
+- decide permit applicability
+- invent event facts
+- invent agencies, thresholds, deadlines, or URLs
+- select unsupported requirements
+- hide missing evidence
 
-- Paid downloadable event roadmap.
-- Paid vendor packet.
-- Organizer subscription.
-- Vendor document vault.
-- Venue listings.
-- Referral or lead-generation marketplace.
-- Done-with-you consulting intake.
+The deterministic rule engine remains the authority for requirement results.
 
-The current results page includes a disabled placeholder CTA for future roadmap and vendor packet products. It does not process payment and does not generate files.
+## Privacy
+
+Privacy and security posture for this branch:
+
+- no raw event-description logging
+- no client-side secret usage
+- metadata-only extraction logging
+- bounded inputs
+- rate limiting on public POST endpoints
+- safe fallback behavior when AI is unavailable
+
+Supporting docs:
+
+- `docs/gatherwise/security-review.md`
+- `docs/gatherwise/data-retention-plan.md`
+- `docs/gatherwise/threat-model.md`
+
+## Demo
+
+Primary recruiter route:
+
+```text
+/showcase
+```
+
+Public demo entry points:
+
+- guided demo path
+- fictional scenarios
+- deterministic results
+- unsupported-jurisdiction refusal example
+- simulator-backed route comparison
+
+Demo and walkthrough docs:
+
+- `HANDSHAKE_SUBMISSION.md`
+- `docs/gatherwise/demo-script-90-seconds.md`
+- `docs/gatherwise/recruiter-walkthrough.md`
+
+## Deployment
+
+Recommended deployment flow for this branch:
+
+1. Install dependencies with `npm ci`
+2. Copy `.env.example` or provide environment variables
+3. Run `npm run prisma:generate`
+4. Run `npx prisma migrate deploy`
+5. Run `npm run prisma:seed`
+6. Run `npm run typecheck`
+7. Run `npm test`
+8. Run `npm run eval:gatherwise`
+9. Run `npm run build`
+10. Start with `npm start`
+
+Release docs:
+
+- `docs/gatherwise/deployment-checklist.md`
+- `docs/gatherwise/release-audit.md`
+
+## Limitations
+
+- Arizona pilot only
+- informational guidance only
+- official source pages can change
+- human verification is still recommended
+- unsupported jurisdictions are refused rather than guessed
+- AI-backed paths depend on configuration and availability
+- there is no dedicated lint script in the current repository
+- browser-based end-to-end accessibility coverage is still lighter than ideal
+
+See also:
+
+- `docs/gatherwise/known-limitations.md`
+- `docs/gatherwise/failure-modes.md`
+
+## Builder Attribution
+
+Gatherwise is Paul Rotzler's Handshake project.
+
+Paul's verified contributions in this branch include:
+
+- identifying the fragmented event-readiness problem
+- researching official Arizona pilot source material
+- designing the product and information architecture
+- defining the deterministic rule architecture
+- designing the AI authority boundaries
+- building and testing the application with AI-assisted development
+- designing the evaluation and evidence systems
+
+AI-assisted development supported implementation and iteration, but it did not independently own or originate the product direction.
