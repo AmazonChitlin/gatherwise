@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html data-scroll-behavior="smooth" lang="en">
       <body className={`${manrope.variable} ${newsreader.variable}`}>
         <a className="gw-skip-link" href="#main-content">
           Skip to main content

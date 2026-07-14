@@ -913,6 +913,14 @@ function formatFactValue(fact: ReviewFact) {
     return fact.value ? "Yes" : "No";
   }
 
+  const option = fieldOptions(fact.key)?.find(
+    (candidate) => candidate.value === fact.value,
+  );
+
+  if (option) {
+    return option.label;
+  }
+
   return String(fact.value);
 }
 

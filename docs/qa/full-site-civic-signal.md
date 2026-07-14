@@ -31,7 +31,7 @@
 9. The header has two competing intake links. Resolved on 2026-07-14 with four informational links and one `Start a route` action.
 10. Mobile navigation is too tall. Resolved on 2026-07-14 with a 64px closed header and compact disclosure menu.
 11. Footer legal text contrast is too low. Resolved on 2026-07-14 with AA-oriented support and legal text treatments.
-12. The Civic Signal style is not yet applied throughout the full product.
+12. The Civic Signal style is not yet applied throughout the full product. Resolved across the intake, results, showcase, how-it-works, sources, and about routes before this browser-level pass.
 
 ## Scope
 
@@ -113,3 +113,52 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - The homepage extraction mockup now labels extracted facts `Needs review`, preserves the visibly unknown property fact, and shows the same 4,000-character limit as the live intake.
 - Existing skip-link, heading, landmark, icon-plus-text status, visible-focus, 44px target, and reduced-motion contracts remain covered. The in-app browser remained isolated from this workspace localhost, so interaction checks are code-, test-, build-, and production-HTML-based rather than a claimed visual-browser pass.
 - Verification: `npm test` passed 275 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.
+
+## Browser-level journey verification
+
+Playwright Chromium coverage now exercises the application through real browser navigation and interaction. The suite fails on page exceptions, browser console errors, unexpected internal `4xx` or `5xx` responses, horizontal overflow, and clipped visible controls. Extraction is intercepted with deterministic fixtures, so browser QA does not require an API key or incur model charges.
+
+### Route matrix
+
+| Area | Routes and behavior covered |
+| --- | --- |
+| Homepage | `/` load, primary describe action, live demo action, primary navigation, horizontal overflow |
+| Describe and review | `/intake?path=describe`, mocked extraction, true and false confirmation, explicit city confirmation, enum edit, untouched unknown facts, reviewed submission envelope |
+| Extraction race | AbortSignal observation, guided-path switch, stale response rejection |
+| Guided intake | `/intake?path=guided`, required validation, one retail-sales control, factual BYOB wording, child toggles on and off, aggregate payload consistency, successful submission |
+| Results | Supported readiness summary, Readiness Route, requirements, missing details, Evidence Trail, official source links, simulator comparison, informational boundary |
+| Unsupported geography | Dedicated stop state with no requirement or source fabrication |
+| Public demos | First three featured one-click result demos and their guided samples |
+| Information pages | `/showcase`, `/how-it-works`, `/sources`, `/about` |
+| Health and internal links | `/api/health` plus the known public route matrix, with responses required below `400` |
+
+### Browser matrix
+
+| Browser | Viewports | Result |
+| --- | --- | --- |
+| Playwright Chromium | `320x800`, `375x812`, `768x1024`, `1024x768`, `1440x1000` | Homepage, guided intake, supported results, sources, responsive navigation, overflow, and clipped-control checks covered |
+
+The keyboard smoke path covers the skip link, brand link, compact navigation, intake mode control, event description, extraction action, Readiness Route disclosure, simulator action, official source link, and footer navigation. The compact menu is also checked for opening focus, Escape closure, and focus return.
+
+### Defects found and fixed
+
+- The initial E2E origin used `127.0.0.1` while the Next.js development client expected `localhost`, producing failed HMR connections. The runner now uses one consistent `localhost` origin.
+- AppleDouble `._*` files created by the external macOS volume were being discovered as tests. Playwright ignores those filesystem metadata files without deleting workspace content.
+- Edited review enums displayed canonical storage codes after save. Review rows now resolve known canonical values to their user-facing configuration labels.
+- Smooth route scrolling produced a Next.js development warning. The document now declares its existing smooth-scroll behavior to Next.js, while the established reduced-motion override remains intact.
+
+### Known limitations
+
+- Automated browser coverage currently uses Chromium only. Safari/WebKit and Firefox remain manual or future CI coverage.
+- External official sites are not fetched by the suite; trusted links are checked for visible `https://` destinations to avoid coupling release checks to third-party availability.
+- The extraction journey uses a deterministic API mock. Live-provider behavior remains covered separately by opt-in evaluation and provider tests.
+- Playwright retains traces, screenshots, and video under `test-results/` on failure and writes the local HTML report to `playwright-report/`; both are ignored generated artifacts.
+
+### Rerun commands
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+Final verification on 2026-07-14: `npm test` passed 275 tests, `npm run test:e2e` passed 15 Chromium journeys, type checking passed, the production build passed, and the offline evaluation passed all 36 scenarios in dataset `2026-07-13.1`.
