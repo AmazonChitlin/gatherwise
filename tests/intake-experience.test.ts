@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const intakePage = read("app", "intake", "page.tsx");
 const experience = read("components", "intake-experience.tsx");
+const intakeForm = read("components", "intake-form.tsx");
 
 test("offers only the two starting intake paths", () => {
   assert.match(intakePage, /IntakeExperience/);
@@ -36,6 +37,15 @@ test("review flow keeps accessibility and large-target interaction cues", () => 
   assert.match(experience, /aria-live="polite"/);
   assert.match(experience, /min-h-\[48px\]/);
   assert.match(experience, /min-h-\[44px\]/);
+});
+
+test("AI-derived guided sessions submit partial reviewed facts instead of defaults", () => {
+  assert.match(experience, /reviewFacts=\{reviewFacts\.length > 0/);
+  assert.match(intakeForm, /reviewedIntakeSubmissionSchema\.parse/);
+  assert.match(intakeForm, /touchedFieldsRef/);
+  assert.match(intakeForm, /partialIntakeSchema\.safeParse/);
+  assert.match(intakeForm, /value=\{values\.city \?\? ""\}/);
+  assert.match(intakeForm, /value=\{values\.indoorOrOutdoor \?\? ""\}/);
 });
 
 function read(...parts: string[]) {

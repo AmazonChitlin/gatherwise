@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildReviewFacts, buildMissingQuestions, reviewFactsToPartialValues } from "@/lib/intake-review";
+import {
+  buildReviewFacts,
+  buildMissingQuestions,
+  reviewFactsToIntakeValues,
+  reviewFactsToPartialValues
+} from "@/lib/intake-review";
 import type { EventExtractionResult } from "@/lib/ai/extraction";
 
 const extraction: EventExtractionResult = {
@@ -42,6 +47,26 @@ test("preserves unknown facts when creating partial values", () => {
 
   assert.equal(values.city, "phoenix");
   assert.equal("hasAlcohol" in values, false);
+});
+
+test("does not inflate unknown review facts with guided-form defaults", () => {
+  const facts = buildReviewFacts({
+    ...extraction,
+    facts: []
+  });
+  const values = reviewFactsToIntakeValues(facts);
+
+  for (const key of [
+    "city",
+    "expectedAttendance",
+    "eventType",
+    "useCase",
+    "propertyUse",
+    "hasRetailSales",
+    "indoorOrOutdoor"
+  ] as const) {
+    assert.equal(key in values, false, `${key} should remain absent`);
+  }
 });
 
 test("ranks at most three deterministic missing questions", () => {

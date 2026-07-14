@@ -7,6 +7,10 @@ import {
   shouldPersistIntakeSubmissions
 } from "@/lib/intake-storage";
 import { buildIntakeCompatibilityFacts } from "@/lib/intake-persistence";
+import {
+  buildReviewedEventFacts,
+  reviewedIntakeSubmissionSchema
+} from "@/lib/reviewed-intake";
 import { intakeSchema } from "@/lib/schemas";
 import {
   createRateLimitHeaders,
@@ -55,14 +59,29 @@ export async function POST(request: Request) {
 
     throw error;
   }
-  const result = intakeSchema.safeParse(body);
+  const isReviewedSubmission =
+    body !== null && typeof body === "object" && "review" in body;
+  const reviewedResult = isReviewedSubmission
+    ? reviewedIntakeSubmissionSchema.safeParse(body)
+    : null;
+  const result = isReviewedSubmission ? null : intakeSchema.safeParse(body);
 
-  if (!result.success) {
+  if (
+    (isReviewedSubmission && !reviewedResult?.success) ||
+    (!isReviewedSubmission && !result?.success)
+  ) {
+    const fieldErrors = isReviewedSubmission
+      ? reviewedResult?.success === false
+        ? reviewedResult.error.flatten().fieldErrors
+        : {}
+      : result?.success === false
+        ? result.error.flatten().fieldErrors
+        : {};
     return NextResponse.json(
       {
         message: "Please fix the highlighted intake fields.",
         errors: Object.fromEntries(
-          Object.entries(result.error.flatten().fieldErrors).flatMap(
+          Object.entries(fieldErrors).flatMap(
             ([key, messages]) => (messages?.[0] ? [[key, messages[0]]] : [])
           )
         )
@@ -74,25 +93,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const data = result.data;
-  const city = findSupportedJurisdiction(data.city);
-  const useCase = await prisma.useCase.findUnique({
-    where: { slug: data.useCase }
-  });
-  const jurisdiction = city
-    ? await prisma.jurisdiction.findUnique({
-        where: { code: city.jurisdictionCode }
-      })
-    : null;
-  const compatibilityFacts = buildIntakeCompatibilityFacts(data);
-  const eventFacts = intakeToEventFacts(data);
-  const serializedPayload = serializeStoredIntakePayload(data, eventFacts);
+  const submittedIntake = reviewedResult?.success
+    ? reviewedResult.data.intake
+    : result?.success
+      ? result.data
+      : {};
+  const eventFacts = reviewedResult?.success
+    ? buildReviewedEventFacts(reviewedResult.data)
+    : intakeToEventFacts(intakeSchema.parse(submittedIntake));
+  const completeIntake = intakeSchema.safeParse(submittedIntake);
 
-  if (!shouldPersistIntakeSubmissions()) {
+  if (!shouldPersistIntakeSubmissions() || !completeIntake.success) {
     try {
       return NextResponse.json(
         {
-          snapshot: createResultsSnapshot(data),
+          snapshot: createResultsSnapshot(submittedIntake, eventFacts),
           persistence: "stateless"
         },
         {
@@ -112,6 +127,19 @@ export async function POST(request: Request) {
       );
     }
   }
+
+  const data = completeIntake.data;
+  const city = findSupportedJurisdiction(data.city);
+  const useCase = await prisma.useCase.findUnique({
+    where: { slug: data.useCase }
+  });
+  const jurisdiction = city
+    ? await prisma.jurisdiction.findUnique({
+        where: { code: city.jurisdictionCode }
+      })
+    : null;
+  const compatibilityFacts = buildIntakeCompatibilityFacts(data);
+  const serializedPayload = serializeStoredIntakePayload(data, eventFacts);
 
   const intake = await prisma.intakeSubmission.create({
     data: {

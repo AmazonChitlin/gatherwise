@@ -31,7 +31,11 @@ import {
   type EvidenceChecklistItem
 } from "@/lib/rule-engine";
 import { formatTimeline, topItemsToCheckFirst } from "@/lib/results-helpers";
-import type { IntakeInput } from "@/lib/schemas";
+import {
+  intakeSchema,
+  type IntakeInput,
+  type PartialIntakeInput
+} from "@/lib/schemas";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type IntakeWithUseCase = NonNullable<
@@ -62,7 +66,7 @@ export default async function ResultsPage({
   const intakeInput = intake
     ? toIntakeInput(intake)
     : snapshotPayload?.intake
-      ? normalizeSnapshotIntake(snapshotPayload.intake)
+      ? snapshotPayload.intake
       : null;
 
   if (!intakeInput) {
@@ -159,7 +163,7 @@ export default async function ResultsPage({
           <Card className="command-card-dark command-pattern p-6">
             <Badge tone="highlight">Readiness summary</Badge>
             <h1 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em]">
-              {intakeInput.eventName} readiness summary
+              {intakeInput.eventName ?? "Event"} readiness summary
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
               Based on the details you provided, Gatherwise shows what may
@@ -667,10 +671,11 @@ function SummaryItem({
 
 function normalizeResultsEventFacts(
   document: EventFactsDocument | undefined,
-  intake: IntakeInput
+  intake: PartialIntakeInput
 ) {
   if (!document) {
-    return intakeToEventFacts(intake, { defaultStatus: "confirmed" });
+    const parsed = intakeSchema.parse(intake);
+    return intakeToEventFacts(parsed, { defaultStatus: "confirmed" });
   }
 
   return parseEventFactsDocument({
@@ -801,30 +806,4 @@ function toIntakeInput(intake: IntakeWithUseCase): IntakeInput {
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function normalizeSnapshotIntake(input: Partial<IntakeInput>): IntakeInput {
-  return {
-    ...input,
-    eventName: input.eventName ?? "Event",
-    city: input.city ?? "phoenix",
-    county: input.county ?? "Maricopa County",
-    useCase: input.useCase ?? "multi-vendor-market",
-    eventType: input.eventType ?? "outdoor-market",
-    propertyUse: input.propertyUse ?? "private-property",
-    expectedAttendance: input.expectedAttendance ?? 0,
-    vendorCount: input.vendorCount ?? 0,
-    eventDate: input.eventDate ?? new Date().toISOString().slice(0, 10),
-    recurrence: input.recurrence ?? "one-time",
-    hasFood: input.hasFood ?? false,
-    hasFoodTruck: input.hasFoodTruck ?? false,
-    hasRetailSales: input.hasRetailSales ?? false,
-    hasAlcohol: input.hasAlcohol ?? false,
-    hasAmplifiedSound: input.hasAmplifiedSound ?? false,
-    hasTemporaryStructure: input.hasTemporaryStructure ?? false,
-    hasGenerator: input.hasGenerator ?? false,
-    hasOpenFlame: input.hasOpenFlame ?? false,
-    hasStreetSidewalkOrParkingImpact:
-      input.hasStreetSidewalkOrParkingImpact ?? false
-  };
 }

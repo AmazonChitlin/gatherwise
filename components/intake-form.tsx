@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import {
@@ -16,35 +16,73 @@ import {
   venueTypeOptions
 } from "@/lib/config";
 import { defaultIntakeValues } from "@/lib/intake-defaults";
-import { intakeSchema, type IntakeInput } from "@/lib/schemas";
+import { eventFactFieldKeys } from "@/lib/event-facts";
+import type { ReviewFact } from "@/lib/intake-review";
+import {
+  REVIEWED_INTAKE_SCHEMA_VERSION,
+  reviewedIntakeSubmissionSchema
+} from "@/lib/reviewed-intake";
+import {
+  intakeSchema,
+  partialIntakeSchema,
+  type IntakeInput,
+  type PartialIntakeInput
+} from "@/lib/schemas";
 
 type TentSizeRange = NonNullable<IntakeInput["tentSizeRange"]>;
 type IndoorOrOutdoor = NonNullable<IntakeInput["indoorOrOutdoor"]>;
 
 type IntakeFormProps = {
-  initialValues?: IntakeInput;
+  initialValues?: PartialIntakeInput;
   introText?: string;
+  reviewFacts?: ReviewFact[];
 };
 
 export function IntakeForm({
   initialValues,
-  introText = "Start with the basics, then add any details you know. Optional details help Gatherwise match pilot rules more precisely, but you can leave them off if they do not apply."
+  introText = "Start with the basics, then add any details you know. Optional details help Gatherwise match pilot rules more precisely, but you can leave them off if they do not apply.",
+  reviewFacts
 }: IntakeFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState(initialValues ?? defaultIntakeValues);
+  const [values, setStoredValues] = useState<PartialIntakeInput>(
+    initialValues ?? defaultIntakeValues
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const touchedFieldsRef = useRef(new Set<keyof IntakeInput>());
+  const isReviewedSession = Boolean(reviewFacts?.length);
+
+  function setValues(
+    updater: (current: PartialIntakeInput) => PartialIntakeInput
+  ) {
+    setStoredValues((current) => {
+      const next = updater(current);
+
+      if (isReviewedSession) {
+        for (const key of eventFactFieldKeys) {
+          if (!Object.is(current[key], next[key])) {
+            touchedFieldsRef.current.add(key);
+          }
+        }
+      }
+
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (initialValues) {
-      setValues(initialValues);
+      setStoredValues(initialValues);
+      touchedFieldsRef.current.clear();
     }
   }, [initialValues]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = intakeSchema.safeParse(values);
+    const result = isReviewedSession
+      ? partialIntakeSchema.safeParse(values)
+      : intakeSchema.safeParse(values);
 
     if (!result.success) {
       setErrors(formatErrors(result.error.flatten().fieldErrors));
@@ -57,10 +95,28 @@ export function IntakeForm({
     setIsSubmitting(true);
 
     try {
+      const requestBody = isReviewedSession
+        ? reviewedIntakeSubmissionSchema.parse({
+            intake: result.data,
+            review: {
+              schemaVersion: REVIEWED_INTAKE_SCHEMA_VERSION,
+              facts: reviewFacts?.map((fact) => ({
+                key: fact.key,
+                status:
+                  fact.reviewStatus === "needs_review"
+                    ? "extracted"
+                    : fact.reviewStatus,
+                value: fact.reviewStatus === "unknown" ? null : fact.value,
+                evidenceText: fact.evidenceText
+              })),
+              touchedFields: [...touchedFieldsRef.current]
+            }
+          })
+        : result.data;
       const response = await fetch("/api/intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data)
+        body: JSON.stringify(requestBody)
       });
       const payload = (await response.json()) as {
         intakeId?: string;
@@ -117,7 +173,7 @@ export function IntakeForm({
               value: code,
               label
             }))}
-            value={values.city}
+            value={values.city ?? ""}
           />
           <SelectField
             error={errors.county}
@@ -126,7 +182,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, county }))
             }
             options={countyOptions}
-            value={values.county}
+            value={values.county ?? ""}
           />
         </div>
       </Section>
@@ -151,7 +207,7 @@ export function IntakeForm({
                 }))
               }
               placeholder="Example: Downtown record swap"
-              value={values.eventName}
+              value={values.eventName ?? ""}
             />
           </Field>
           <Field
@@ -165,11 +221,13 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  expectedAttendance: Number(event.target.value)
+                  expectedAttendance: event.target.value
+                    ? Number(event.target.value)
+                    : undefined
                 }))
               }
               type="number"
-              value={values.expectedAttendance}
+              value={values.expectedAttendance ?? ""}
             />
           </Field>
           <SelectField
@@ -179,7 +237,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, useCase }))
             }
             options={useCaseOptions}
-            value={values.useCase}
+            value={values.useCase ?? ""}
           />
           <SelectField
             error={errors.eventType}
@@ -188,7 +246,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, eventType }))
             }
             options={eventTypeOptions}
-            value={values.eventType}
+            value={values.eventType ?? ""}
           />
         </div>
       </Section>
@@ -210,15 +268,17 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  vendorCount: Number(event.target.value)
+                  vendorCount: event.target.value
+                    ? Number(event.target.value)
+                    : undefined
                 }))
               }
               type="number"
-              value={values.vendorCount}
+              value={values.vendorCount ?? ""}
             />
           </Field>
           <Toggle
-            checked={values.hasRetailSales}
+            checked={values.hasRetailSales === true}
             label="Retail items or taxable goods will be sold"
             onChange={(hasRetailSales) =>
               setValues((current) => ({ ...current, hasRetailSales }))
@@ -234,14 +294,14 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasFood}
+            checked={values.hasFood === true}
             label="Food or drinks will be served or sampled"
             onChange={(hasFood) =>
               setValues((current) => ({ ...current, hasFood }))
             }
           />
           <Toggle
-            checked={values.hasFoodTruck}
+            checked={values.hasFoodTruck === true}
             label="A food truck is involved"
             onChange={(hasFoodTruck) =>
               setValues((current) => ({
@@ -252,7 +312,7 @@ export function IntakeForm({
             }
           />
           <Toggle
-            checked={values.hasRetailSales}
+            checked={values.hasRetailSales === true}
             label="Retail items will be sold"
             onChange={(hasRetailSales) =>
               setValues((current) => ({ ...current, hasRetailSales }))
@@ -339,7 +399,7 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasAlcohol}
+            checked={values.hasAlcohol === true}
             label="Alcohol is involved"
             onChange={(hasAlcohol) =>
               setValues((current) => ({
@@ -407,21 +467,21 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasTemporaryStructure}
+            checked={values.hasTemporaryStructure === true}
             label="Temporary structure, tent, stage, or canopy"
             onChange={(hasTemporaryStructure) =>
               setValues((current) => ({ ...current, hasTemporaryStructure }))
             }
           />
           <Toggle
-            checked={values.hasGenerator}
+            checked={values.hasGenerator === true}
             label="Generator or temporary power"
             onChange={(hasGenerator) =>
               setValues((current) => ({ ...current, hasGenerator }))
             }
           />
           <Toggle
-            checked={values.hasOpenFlame}
+            checked={values.hasOpenFlame === true}
             label="Open flame, cooking flame, or heating element"
             onChange={(hasOpenFlame) =>
               setValues((current) => ({ ...current, hasOpenFlame }))
@@ -519,7 +579,7 @@ export function IntakeForm({
               }))
             }
             options={venueTypeOptions}
-            value={values.propertyUse}
+            value={values.propertyUse ?? ""}
           />
           <SelectField
             error={errors.indoorOrOutdoor}
@@ -536,10 +596,10 @@ export function IntakeForm({
               { value: "both", label: "Both indoor and outdoor" },
               { value: "not-sure", label: "Not sure yet" }
             ]}
-            value={values.indoorOrOutdoor ?? "outdoor"}
+            value={values.indoorOrOutdoor ?? ""}
           />
           <Toggle
-            checked={values.hasStreetSidewalkOrParkingImpact}
+            checked={values.hasStreetSidewalkOrParkingImpact === true}
             label="Street, sidewalk, or parking impacts"
             onChange={(hasStreetSidewalkOrParkingImpact) =>
               setValues((current) => ({
@@ -665,7 +725,7 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasAmplifiedSound}
+            checked={values.hasAmplifiedSound === true}
             label="Amplified sound or performance audio"
             onChange={(hasAmplifiedSound) =>
               setValues((current) => ({ ...current, hasAmplifiedSound }))
@@ -725,7 +785,7 @@ export function IntakeForm({
                 }))
               }
               type="date"
-              value={values.eventDate}
+              value={values.eventDate ?? ""}
             />
           </Field>
           <SelectField
@@ -739,7 +799,7 @@ export function IntakeForm({
               }))
             }
             options={recurrenceOptions}
-            value={values.recurrence}
+            value={values.recurrence ?? ""}
           />
         </div>
       </Section>
@@ -762,7 +822,8 @@ export function IntakeForm({
         <button
           className="focus-ring min-h-[44px] rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
           onClick={() => {
-            setValues(initialValues ?? defaultIntakeValues);
+            setStoredValues(initialValues ?? defaultIntakeValues);
+            touchedFieldsRef.current.clear();
             setErrors({});
             setSubmitError("");
           }}
@@ -804,6 +865,11 @@ function SelectField({
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
+        {value === "" ? (
+          <option disabled value="">
+            Choose an answer
+          </option>
+        ) : null}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

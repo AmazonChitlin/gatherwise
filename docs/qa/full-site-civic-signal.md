@@ -20,7 +20,7 @@
 
 ## Known defects to address
 
-1. Unknown AI facts can become default values.
+1. Unknown AI facts can become default values. Resolved on 2026-07-13 by preserving partial reviewed values and rebuilding validated fact statuses on the server.
 2. Derived booleans can remain true after child toggles are turned off.
 3. AI extraction is not canceled when switching paths.
 4. Retail sales is asked twice.
@@ -36,3 +36,12 @@
 ## Scope
 
 This baseline establishes a safe workspace for the full-site redesign. No application behavior was changed.
+
+## Unknown-fact preservation verification
+
+- Reviewed AI sessions now submit partial intake values with a strict, versioned fact-status envelope.
+- The server validates canonical values, touched fields, statuses, and evidence before rebuilding `EventFactsDocument`.
+- Untouched unknown facts remain `unknown` with a `null` value; extracted facts remain pending review and cannot drive rule evaluation.
+- Explicitly confirmed `true` and `false` values remain confirmed.
+- Existing complete `IntakeInput` requests retain their prior API behavior.
+- Verification: `npm test` passed 232 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.

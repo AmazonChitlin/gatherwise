@@ -405,6 +405,7 @@ export function IntakeExperience({
           ) : null}
           <IntakeForm
             initialValues={guidedValues}
+            reviewFacts={reviewFacts.length > 0 ? reviewFacts : undefined}
             introText={
               reviewFacts.length > 0
                 ? "Start with the reviewed details Gatherwise found, then fill any gaps you still know. Unknown details can stay unanswered until they matter."
