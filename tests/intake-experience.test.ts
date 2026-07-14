@@ -48,6 +48,19 @@ test("AI-derived guided sessions submit partial reviewed facts instead of defaul
   assert.match(intakeForm, /value=\{values\.indoorOrOutdoor \?\? ""\}/);
 });
 
+test("child controls do not mutate aggregate parent answers", () => {
+  for (const pattern of [
+    /hasFood:\s*current\./,
+    /hasAlcohol:\s*current\./,
+    /alcoholPresent:\s*current\./,
+    /hasTemporaryStructure:\s*current\./,
+    /hasOpenFlame:\s*current\./,
+    /hasStreetSidewalkOrParkingImpact:\s*current\./
+  ]) {
+    assert.doesNotMatch(intakeForm, pattern);
+  }
+});
+
 function read(...parts: string[]) {
   return readFileSync(join(process.cwd(), ...parts), "utf8");
 }

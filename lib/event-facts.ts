@@ -6,6 +6,7 @@ import {
   type PartialIntakeInput
 } from "@/lib/schemas";
 import type { ChecklistItem } from "@/lib/rule-engine";
+import { deriveCompatibilityFacts } from "@/lib/intake-compatibility";
 import type { Confidence, JurisdictionType } from "@/lib/types";
 
 export const EVENT_FACTS_SCHEMA_VERSION = "2026-07-13";
@@ -700,42 +701,15 @@ export function eventFactsToRuleEngineFacts(
   document: EventFactsDocument
 ): RuleTriggerFacts {
   const facts = toFactRecord(document);
+  const compatibility = deriveCompatibilityFacts(
+    ruleReadyFactsToPartialIntake(document)
+  );
   const cityCode = stringValue(facts.city);
   const county = stringValue(facts.county);
   const jurisdiction = supportedJurisdictions.find((item) => item.code === cityCode);
   const propertyUse = stringValue(facts.propertyUse);
-  const hasStreetImpact = booleanValue(facts.hasStreetSidewalkOrParkingImpact);
-  const hasTemporaryStructure = booleanValue(facts.hasTemporaryStructure);
-  const hasFoodTruck = booleanValue(facts.hasFoodTruck);
-  const hasAlcohol = booleanValue(facts.hasAlcohol);
-  const publicProperty =
-    booleanValue(facts.publicProperty) ||
-    booleanValue(facts.cityParkOrFacility) ||
-    propertyUse === "public-property" ||
-    propertyUse === "park-or-plaza";
-  const privateProperty =
-    booleanValue(facts.privateProperty) ||
-    propertyUse === "private-property" ||
-    propertyUse === "parking-lot" ||
-    propertyUse === "licensed-venue";
-  const streetOrParkingImpact =
-    hasStreetImpact ||
-    booleanValue(facts.streetClosure) ||
-    booleanValue(facts.sidewalkUseOrClosure) ||
-    booleanValue(facts.parkingSpacesBlocked) ||
-    booleanValue(facts.trafficControlNeeded) ||
-    booleanValue(facts.rightOfWayUse);
-  const foodTruckOrMobileFoodUnit =
-    hasFoodTruck || booleanValue(facts.foodTruckOrMobileFoodUnit);
-  const alcoholPresent =
-    hasAlcohol ||
-    booleanValue(facts.alcoholPresent) ||
-    booleanValue(facts.alcoholSold) ||
-    booleanValue(facts.alcoholServedFree) ||
-    booleanValue(facts.alcoholByob) ||
-    booleanValue(facts.alcoholOnPublicProperty);
-  const signage =
-    booleanValue(facts.temporarySignage) || booleanValue(facts.banners);
+  const parkingLotUse =
+    booleanValue(facts.parkingLotUse) || propertyUse === "parking-lot";
 
   return {
     jurisdictionCode: jurisdiction?.jurisdictionCode ?? document.jurisdiction.jurisdictionCode,
@@ -744,14 +718,8 @@ export function eventFactsToRuleEngineFacts(
     state: jurisdiction?.state ?? (cityCode ? document.jurisdiction.state : null),
     useCase: stringValue(facts.useCase),
     eventType: stringValue(facts.eventType),
-    foodService:
-      booleanValue(facts.hasFood) ||
-      booleanValue(facts.foodIsPrepackaged) ||
-      booleanValue(facts.foodIsOpenOrPreparedOnSite) ||
-      booleanValue(facts.foodRequiresTemperatureControl) ||
-      booleanValue(facts.foodSampling) ||
-      booleanValue(facts.drinksWithIceOrGarnish),
-    foodTruck: foodTruckOrMobileFoodUnit,
+    foodService: compatibility.hasFood,
+    foodTruck: compatibility.hasFoodTruck,
     foodIsPrepackaged: booleanValue(facts.foodIsPrepackaged),
     foodIsOpenOrPreparedOnSite: booleanValue(facts.foodIsOpenOrPreparedOnSite),
     foodRequiresTemperatureControl: booleanValue(
@@ -759,74 +727,65 @@ export function eventFactsToRuleEngineFacts(
     ),
     foodSampling: booleanValue(facts.foodSampling),
     drinksWithIceOrGarnish: booleanValue(facts.drinksWithIceOrGarnish),
-    foodTruckOrMobileFoodUnit,
+    foodTruckOrMobileFoodUnit: compatibility.hasFoodTruck,
     commissaryOrBaseOfOperations: booleanValue(facts.commissaryOrBaseOfOperations),
     believesFoodExemptionMayApply: booleanValue(
       facts.believesFoodExemptionMayApply
     ),
     retailSales: booleanValue(facts.hasRetailSales),
-    alcohol: alcoholPresent,
-    alcoholPresent,
+    alcohol: compatibility.hasAlcohol,
+    alcoholPresent: compatibility.hasAlcohol,
     alcoholSold: booleanValue(facts.alcoholSold),
     alcoholServedFree: booleanValue(facts.alcoholServedFree),
     alcoholByob: booleanValue(facts.alcoholByob),
-    alcoholOnPublicProperty:
-      booleanValue(facts.alcoholOnPublicProperty) ||
-      (alcoholPresent && publicProperty),
+    alcoholOnPublicProperty: compatibility.alcoholOnPublicProperty,
     amplifiedSound: booleanValue(facts.hasAmplifiedSound),
-    publicProperty,
-    privateProperty,
+    publicProperty: compatibility.usesPublicProperty,
+    privateProperty: compatibility.usesPrivateProperty,
     cityParkOrFacility:
       booleanValue(facts.cityParkOrFacility) || propertyUse === "park-or-plaza",
     venueOrPropertyOwnerPermission: booleanValue(
       facts.venueOrPropertyOwnerPermission
     ),
     indoorOrOutdoor: stringValue(facts.indoorOrOutdoor),
-    sidewalkOrStreetClosure: streetOrParkingImpact,
-    streetClosure: booleanValue(facts.streetClosure) || hasStreetImpact,
+    sidewalkOrStreetClosure: compatibility.hasStreetOrParkingImpact,
+    streetClosure:
+      booleanValue(facts.streetClosure) ||
+      compatibility.hasStreetOrParkingImpact,
     sidewalkUseOrClosure:
-      booleanValue(facts.sidewalkUseOrClosure) || hasStreetImpact,
-    parkingLotUse:
-      booleanValue(facts.parkingLotUse) ||
-      propertyUse === "parking-lot" ||
-      hasStreetImpact,
+      booleanValue(facts.sidewalkUseOrClosure) ||
+      compatibility.hasStreetOrParkingImpact,
+    parkingLotUse: parkingLotUse || compatibility.hasStreetOrParkingImpact,
     parkingSpacesBlocked:
-      booleanValue(facts.parkingSpacesBlocked) || hasStreetImpact,
+      booleanValue(facts.parkingSpacesBlocked) ||
+      compatibility.hasStreetOrParkingImpact,
     trafficControlNeeded:
-      booleanValue(facts.trafficControlNeeded) || hasStreetImpact,
+      booleanValue(facts.trafficControlNeeded) ||
+      compatibility.hasStreetOrParkingImpact,
     rightOfWayUse:
       booleanValue(facts.rightOfWayUse) ||
-      booleanValue(facts.streetClosure) ||
-      booleanValue(facts.sidewalkUseOrClosure) ||
-      hasStreetImpact,
+      compatibility.hasStreetOrParkingImpact,
     expectedAttendance: numberValue(facts.expectedAttendance),
     vendorCount: numberValue(facts.vendorCount),
-    temporaryStructure:
-      hasTemporaryStructure ||
-      booleanValue(facts.tentOrCanopy) ||
-      booleanValue(facts.temporaryStageOrPlatform),
+    temporaryStructure: compatibility.hasTemporaryStructure,
     tentOrCanopy:
-      booleanValue(facts.tentOrCanopy) || hasTemporaryStructure,
+      booleanValue(facts.tentOrCanopy) || compatibility.hasTemporaryStructure,
     tentSizeRange: stringValue(facts.tentSizeRange),
     temporaryStageOrPlatform:
-      booleanValue(facts.temporaryStageOrPlatform) || hasTemporaryStructure,
+      booleanValue(facts.temporaryStageOrPlatform) ||
+      compatibility.hasTemporaryStructure,
     generatorUse: booleanValue(facts.hasGenerator),
-    openFlame:
-      booleanValue(facts.hasOpenFlame) ||
-      booleanValue(facts.cookingHeatSource) ||
-      booleanValue(facts.propaneOrFuelUse),
+    openFlame: compatibility.hasOpenFlame,
     cookingHeatSource: booleanValue(facts.cookingHeatSource),
     propaneOrFuelUse: booleanValue(facts.propaneOrFuelUse),
-    signage,
+    signage: compatibility.hasSignage,
     temporarySignage: booleanValue(facts.temporarySignage),
     banners: booleanValue(facts.banners),
-    ticketedEvent: booleanValue(facts.ticketedEvent),
+    ticketedEvent: compatibility.isTicketed,
     admissionFee: booleanValue(facts.admissionFee),
     publicAdvertising: booleanValue(facts.publicAdvertising),
     multiVendorEvent: (numberValue(facts.vendorCount) ?? 0) > 1,
-    recurringEvent:
-      stringValue(facts.recurrence) === "recurring" ||
-      booleanValue(facts.recurringEvent)
+    recurringEvent: compatibility.isRecurring
   };
 }
 
@@ -943,6 +902,20 @@ function isRuleReadyFact(
   fact: EventFact | undefined
 ): fact is EventFact & { status: "provided" | "confirmed" } {
   return fact?.status === "provided" || fact?.status === "confirmed";
+}
+
+function ruleReadyFactsToPartialIntake(document: EventFactsDocument) {
+  const intake: PartialIntakeInput = {};
+
+  for (const fact of document.facts) {
+    if (!isRuleReadyFact(fact) || fact.value === null) {
+      continue;
+    }
+
+    intake[fact.key] = coerceFactValue(fact) as never;
+  }
+
+  return intake;
 }
 
 export function groupEventFacts(document: EventFactsDocument) {

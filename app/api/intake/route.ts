@@ -6,7 +6,7 @@ import {
   createResultsSnapshot,
   shouldPersistIntakeSubmissions
 } from "@/lib/intake-storage";
-import { buildIntakeCompatibilityFacts } from "@/lib/intake-persistence";
+import { deriveCompatibilityFacts } from "@/lib/intake-compatibility";
 import {
   buildReviewedEventFacts,
   reviewedIntakeSubmissionSchema
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         where: { code: city.jurisdictionCode }
       })
     : null;
-  const compatibilityFacts = buildIntakeCompatibilityFacts(data);
+  const compatibilityFacts = deriveCompatibilityFacts(data);
   const serializedPayload = serializeStoredIntakePayload(data, eventFacts);
 
   const intake = await prisma.intakeSubmission.create({

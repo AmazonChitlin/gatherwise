@@ -304,11 +304,7 @@ export function IntakeForm({
             checked={values.hasFoodTruck === true}
             label="A food truck is involved"
             onChange={(hasFoodTruck) =>
-              setValues((current) => ({
-                ...current,
-                hasFoodTruck,
-                foodTruckOrMobileFoodUnit: hasFoodTruck
-              }))
+              setValues((current) => ({ ...current, hasFoodTruck }))
             }
           />
           <Toggle
@@ -331,8 +327,7 @@ export function IntakeForm({
             onChange={(foodIsOpenOrPreparedOnSite) =>
               setValues((current) => ({
                 ...current,
-                foodIsOpenOrPreparedOnSite,
-                hasFood: current.hasFood || foodIsOpenOrPreparedOnSite
+                foodIsOpenOrPreparedOnSite
               }))
             }
           />
@@ -342,8 +337,7 @@ export function IntakeForm({
             onChange={(foodRequiresTemperatureControl) =>
               setValues((current) => ({
                 ...current,
-                foodRequiresTemperatureControl,
-                hasFood: current.hasFood || foodRequiresTemperatureControl
+                foodRequiresTemperatureControl
               }))
             }
           />
@@ -353,8 +347,7 @@ export function IntakeForm({
             onChange={(foodSampling) =>
               setValues((current) => ({
                 ...current,
-                foodSampling,
-                hasFood: current.hasFood || foodSampling
+                foodSampling
               }))
             }
           />
@@ -364,8 +357,7 @@ export function IntakeForm({
             onChange={(drinksWithIceOrGarnish) =>
               setValues((current) => ({
                 ...current,
-                drinksWithIceOrGarnish,
-                hasFood: current.hasFood || drinksWithIceOrGarnish
+                drinksWithIceOrGarnish
               }))
             }
           />
@@ -402,11 +394,7 @@ export function IntakeForm({
             checked={values.hasAlcohol === true}
             label="Alcohol is involved"
             onChange={(hasAlcohol) =>
-              setValues((current) => ({
-                ...current,
-                hasAlcohol,
-                alcoholPresent: hasAlcohol
-              }))
+              setValues((current) => ({ ...current, hasAlcohol }))
             }
           />
           <Toggle
@@ -415,9 +403,7 @@ export function IntakeForm({
             onChange={(alcoholSold) =>
               setValues((current) => ({
                 ...current,
-                alcoholSold,
-                hasAlcohol: current.hasAlcohol || alcoholSold,
-                alcoholPresent: current.alcoholPresent || alcoholSold
+                alcoholSold
               }))
             }
           />
@@ -427,9 +413,7 @@ export function IntakeForm({
             onChange={(alcoholServedFree) =>
               setValues((current) => ({
                 ...current,
-                alcoholServedFree,
-                hasAlcohol: current.hasAlcohol || alcoholServedFree,
-                alcoholPresent: current.alcoholPresent || alcoholServedFree
+                alcoholServedFree
               }))
             }
           />
@@ -439,9 +423,7 @@ export function IntakeForm({
             onChange={(alcoholByob) =>
               setValues((current) => ({
                 ...current,
-                alcoholByob,
-                hasAlcohol: current.hasAlcohol || alcoholByob,
-                alcoholPresent: current.alcoholPresent || alcoholByob
+                alcoholByob
               }))
             }
           />
@@ -451,9 +433,7 @@ export function IntakeForm({
             onChange={(alcoholOnPublicProperty) =>
               setValues((current) => ({
                 ...current,
-                alcoholOnPublicProperty,
-                hasAlcohol: current.hasAlcohol || alcoholOnPublicProperty,
-                alcoholPresent: current.alcoholPresent || alcoholOnPublicProperty
+                alcoholOnPublicProperty
               }))
             }
           />
@@ -493,8 +473,7 @@ export function IntakeForm({
             onChange={(tentOrCanopy) =>
               setValues((current) => ({
                 ...current,
-                tentOrCanopy,
-                hasTemporaryStructure: current.hasTemporaryStructure || tentOrCanopy
+                tentOrCanopy
               }))
             }
           />
@@ -504,9 +483,7 @@ export function IntakeForm({
             onChange={(temporaryStageOrPlatform) =>
               setValues((current) => ({
                 ...current,
-                temporaryStageOrPlatform,
-                hasTemporaryStructure:
-                  current.hasTemporaryStructure || temporaryStageOrPlatform
+                temporaryStageOrPlatform
               }))
             }
           />
@@ -516,8 +493,7 @@ export function IntakeForm({
             onChange={(cookingHeatSource) =>
               setValues((current) => ({
                 ...current,
-                cookingHeatSource,
-                hasOpenFlame: current.hasOpenFlame || cookingHeatSource
+                cookingHeatSource
               }))
             }
           />
@@ -566,16 +542,7 @@ export function IntakeForm({
             onChange={(propertyUse) =>
               setValues((current) => ({
                 ...current,
-                propertyUse,
-                privateProperty:
-                  propertyUse === "private-property" ||
-                  propertyUse === "parking-lot" ||
-                  propertyUse === "licensed-venue",
-                publicProperty:
-                  propertyUse === "public-property" ||
-                  propertyUse === "park-or-plaza",
-                cityParkOrFacility: propertyUse === "park-or-plaza",
-                parkingLotUse: propertyUse === "parking-lot"
+                propertyUse
               }))
             }
             options={venueTypeOptions}
@@ -614,8 +581,7 @@ export function IntakeForm({
             onChange={(cityParkOrFacility) =>
               setValues((current) => ({
                 ...current,
-                cityParkOrFacility,
-                publicProperty: current.publicProperty || cityParkOrFacility
+                cityParkOrFacility
               }))
             }
           />
@@ -649,9 +615,7 @@ export function IntakeForm({
             onChange={(streetClosure) =>
               setValues((current) => ({
                 ...current,
-                streetClosure,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || streetClosure
+                streetClosure
               }))
             }
           />
@@ -661,9 +625,7 @@ export function IntakeForm({
             onChange={(sidewalkUseOrClosure) =>
               setValues((current) => ({
                 ...current,
-                sidewalkUseOrClosure,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || sidewalkUseOrClosure
+                sidewalkUseOrClosure
               }))
             }
           />
@@ -673,9 +635,7 @@ export function IntakeForm({
             onChange={(parkingLotUse) =>
               setValues((current) => ({
                 ...current,
-                parkingLotUse,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || parkingLotUse
+                parkingLotUse
               }))
             }
           />
@@ -685,9 +645,7 @@ export function IntakeForm({
             onChange={(parkingSpacesBlocked) =>
               setValues((current) => ({
                 ...current,
-                parkingSpacesBlocked,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || parkingSpacesBlocked
+                parkingSpacesBlocked
               }))
             }
           />
@@ -697,9 +655,7 @@ export function IntakeForm({
             onChange={(trafficControlNeeded) =>
               setValues((current) => ({
                 ...current,
-                trafficControlNeeded,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || trafficControlNeeded
+                trafficControlNeeded
               }))
             }
           />
@@ -709,9 +665,7 @@ export function IntakeForm({
             onChange={(rightOfWayUse) =>
               setValues((current) => ({
                 ...current,
-                rightOfWayUse,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || rightOfWayUse
+                rightOfWayUse
               }))
             }
           />

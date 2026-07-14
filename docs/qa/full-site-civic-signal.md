@@ -21,7 +21,7 @@
 ## Known defects to address
 
 1. Unknown AI facts can become default values. Resolved on 2026-07-13 by preserving partial reviewed values and rebuilding validated fact statuses on the server.
-2. Derived booleans can remain true after child toggles are turned off.
+2. Derived booleans can remain true after child toggles are turned off. Resolved on 2026-07-13 by separating raw answers from deterministic compatibility derivation.
 3. AI extraction is not canceled when switching paths.
 4. Retail sales is asked twice.
 5. BYOB wording asks about permission rather than the event fact.
@@ -45,3 +45,11 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - Explicitly confirmed `true` and `false` values remain confirmed.
 - Existing complete `IntakeInput` requests retain their prior API behavior.
 - Verification: `npm test` passed 232 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.
+
+## Aggregate-fact derivation verification
+
+- Child controls now update only their own factual fields; parent answers remain independent.
+- `deriveCompatibilityFacts()` recomputes aggregate food, alcohol, structure, heat, property, and public-space triggers from current validated state.
+- EventFacts retain explicit parent values, including confirmed `false`, while rule-trigger compatibility remains backward compatible.
+- Turning off the last contributing child removes its aggregate contribution without component synchronization effects.
+- Verification: `npm test` passed 240 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.
