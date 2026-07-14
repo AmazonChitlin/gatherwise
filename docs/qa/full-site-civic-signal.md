@@ -168,8 +168,10 @@ Final verification on 2026-07-14: `npm test` passed 275 tests, `npm run test:e2e
 - Release date: 2026-07-14
 - Release candidate branch: `redesign/gatherwise-civic-signal-v2`
 - Release candidate commit: `49f7b29814034461ae1df03721858434686d1235`
+- Release documentation commit: `f9fc272`
+- Merge commit: `73bbd5fa773d09e8dba6c4f30eaac51552c01485`
 - Deployment branch: `showcase/gatherwise-handshake`
-- Planned release tag: `gatherwise-civic-signal-v2`
+- Release tag: `gatherwise-civic-signal-v2`
 - Startup script Git mode: `100755`
 
 ### Final results
@@ -208,6 +210,19 @@ The first fresh local `prisma migrate deploy` process exited with an unelaborate
 - [x] Run clean install, unit tests, type checking, build, evaluation, and E2E tests.
 - [x] Run Railway-style SQLite migration, seed, startup, restart, health, route, demo, and fallback checks.
 - [x] Confirm production URL documentation uses `https://gatherwise-production.up.railway.app`.
-- [ ] Merge non-destructively into `showcase/gatherwise-handshake` and push.
-- [ ] Create and push annotated tag `gatherwise-civic-signal-v2` at the merge commit.
-- [ ] Wait for Railway deployment and verify health, core journeys, live AI, demos, shell, and browser console.
+- [x] Merge non-destructively into `showcase/gatherwise-handshake` and push.
+- [x] Create and push annotated tag `gatherwise-civic-signal-v2` at the merge commit.
+- [x] Wait for Railway deployment and verify health, core journeys, live AI, demos, shell, and browser console.
+
+### Live production verification
+
+- Railway reported merge commit `73bbd5f` as successfully deployed.
+- `https://gatherwise-production.up.railway.app/api/health` returned `200` with `{"status":"ok"}`.
+- The homepage, describe path, guided path, results, sources, showcase, and all public demo routes loaded successfully.
+- Live OpenAI extraction returned `200` from configured model `gpt-5.6-luna` in 7.3 seconds for fictional event data. The browser review showed 17 extracted facts needing review, 37 unknown facts, and three visible ambiguities; no extracted fact was auto-confirmed.
+- The fictional punk-show result rendered five deterministic possible requirements, a vertical Readiness Route, Evidence Trails, three trusted official-source records, and the informational boundary.
+- Changing the simulator city from Phoenix to Tempe produced one added requirement, four removed requirements, and one unchanged requirement from the deterministic trace.
+- The source index rendered 45 available official-source links. External source availability was not treated as an application health dependency.
+- At `375x812`, the closed mobile header measured 65 pixels, the menu exposed How it works, Sources, About, Showcase, and Start a route, and no horizontal overflow was present.
+- Footer guidance remained visible, and the live browser recorded no console warnings or errors.
+- No production-only release-blocking issue was found.
