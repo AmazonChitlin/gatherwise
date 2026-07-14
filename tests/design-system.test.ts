@@ -7,6 +7,8 @@ const globalsCss = readFileSync(
   join(process.cwd(), "app", "globals.css"),
   "utf8"
 );
+const layout = readFileSync(join(process.cwd(), "app", "layout.tsx"), "utf8");
+const home = readFileSync(join(process.cwd(), "app", "page.tsx"), "utf8");
 
 test("defines Gatherwise semantic color tokens and OKLCH support layer", () => {
   const requiredTokens = [
@@ -75,6 +77,52 @@ test("defines semantic state helpers for unsupported and AI-unavailable states",
   for (const className of classes) {
     assert.match(globalsCss, new RegExp(escapeToken(className)));
   }
+});
+
+test("loads the Civic Signal type system through next font", () => {
+  assert.match(layout, /Manrope, Newsreader/);
+  assert.match(layout, /--font-manrope/);
+  assert.match(layout, /--font-newsreader/);
+  assert.match(globalsCss, /font-family:\s*var\(--font-manrope\)/);
+  assert.match(globalsCss, /font-family:\s*var\(--font-newsreader\)/);
+});
+
+test("defines the Civic Signal palette, route motion, and reduced-motion fallback", () => {
+  const tokens = [
+    "--civic-ink",
+    "--civic-limestone",
+    "--civic-paper",
+    "--civic-orange",
+    "--civic-cactus",
+    "--civic-slate"
+  ];
+
+  for (const token of tokens) {
+    assert.match(globalsCss, new RegExp(`${escapeToken(token)}\\s*:`));
+  }
+
+  assert.match(globalsCss, /@keyframes civic-route-draw/);
+  assert.match(globalsCss, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(globalsCss, /\.civic-product-route__line\s*\{\s*clip-path: none; opacity: 1;/);
+});
+
+test("structures the public homepage as the Civic Signal route story", () => {
+  const requiredSections = [
+    "Your event has a route. <em>Gatherwise shows the next turn.</em>",
+    "One event idea. Four legible turns.",
+    "Inside a Gatherwise result",
+    "Built to refuse guesswork.",
+    "Three events. Three different routes.",
+    "Planning starts with an idea. <em>Readiness starts with the right route.</em>"
+  ];
+
+  for (const section of requiredSections) {
+    assert.ok(home.includes(section), `missing homepage section: ${section}`);
+  }
+
+  assert.match(home, /listDemoScenarios\(\)\.slice\(0, 3\)/);
+  assert.match(home, /36 evaluation scenarios/);
+  assert.doesNotMatch(home, /^"use client";/m);
 });
 
 function escapeToken(value: string) {

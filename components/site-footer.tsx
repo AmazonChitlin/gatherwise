@@ -10,64 +10,33 @@ const footerLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--line)] bg-white">
-      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 md:grid-cols-[1.1fr_0.9fr_1fr]">
-        <section>
-          <div className="inline-flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-3">
-            <div className="rounded-[var(--radius-control)] border-2 border-[var(--secondary)] bg-[var(--primary-soft)] px-3 py-2">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--secondary)]">
-                Gatherwise
-              </p>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary-strong)]">
-                Arizona pilot
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[var(--primary)]">
-                Ready. Set. Local.
-              </p>
-              <p className="text-xs text-[var(--muted)]">
-                AI-powered event readiness for organizers, vendors, and venues
-              </p>
-            </div>
-          </div>
-          <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
-            Gatherwise helps Arizona pilot users sort event details, understand
-            what may apply, and check official sources before event day.
-          </p>
+    <footer className="civic-footer">
+      <div className="civic-footer__grid">
+        <section className="civic-footer__statement">
+          <p className="civic-kicker">Ready. Set. Local.</p>
+          <h2>Follow the facts.<br />Check the source.</h2>
         </section>
 
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Explore
-          </h2>
-          <nav aria-label="Footer navigation" className="mt-3 grid gap-2">
-            {footerLinks.map((link) => (
-              <Link
-                className="focus-ring rounded-sm text-sm font-semibold text-[var(--foreground)] hover:text-[var(--primary)]"
-                href={link.href}
-                key={link.href}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </section>
+        <nav aria-label="Footer navigation" className="civic-footer__nav">
+          <p>Explore</p>
+          {footerLinks.map((link) => (
+            <Link className="focus-ring" href={link.href} key={link.href}>{link.label}</Link>
+          ))}
+        </nav>
 
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Scope
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Arizona pilot coverage focuses on Maricopa County and the launch
-            cities listed in the guided form.
-          </p>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Informational guidance only. Gatherwise does not submit permits,
-            approve events, or replace official instructions. Check the
-            official source because requirements can change.
-          </p>
+        <section className="civic-footer__scope">
+          <p>Arizona pilot</p>
+          <span>Maricopa County launch coverage</span>
+          <span>Informational guidance only</span>
+          <span>Sources can change</span>
+          <span>Human verification recommended</span>
         </section>
+      </div>
+
+      <div className="civic-footer__wordmark" aria-hidden="true">Gatherwise</div>
+      <div className="civic-footer__legal">
+        <span>AI-powered event readiness for organizers, vendors, and venues</span>
+        <span>Unsupported jurisdictions are refused</span>
       </div>
     </footer>
   );

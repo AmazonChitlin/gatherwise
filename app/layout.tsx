@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
+import { Manrope, Newsreader } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap"
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  display: "swap"
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gatherwise.local"),
@@ -33,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${manrope.variable} ${newsreader.variable}`}>
         <a className="gw-skip-link" href="#main-content">
           Skip to main content
         </a>
