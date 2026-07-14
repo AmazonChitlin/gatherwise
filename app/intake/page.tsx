@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { IntakeExperience } from "@/components/intake-experience";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
 import { Badge, Card, PageContainer } from "@/components/ui";
+import {
+  getDemoScenario,
+  getDemoDescribeHref,
+  getDemoGuidedHref,
+  listDemoScenarios
+} from "@/lib/demo-scenarios";
 
 export const metadata: Metadata = {
   title: "Plan an Event",
@@ -18,6 +24,7 @@ export default async function IntakePage({
 }) {
   const params = await searchParams;
   const selectedPath = getParam(params.path) === "describe" ? "describe" : "guided";
+  const demo = getDemoScenario(getParam(params.demo));
 
   return (
     <main className="min-h-screen">
@@ -44,11 +51,52 @@ export default async function IntakePage({
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
-            <IntakeExperience initialPath={selectedPath} />
+            <IntakeExperience
+              demoTitle={demo?.title}
+              initialPath={selectedPath}
+              prefilledValues={demo?.featuredPath === "guided" ? demo.intake : undefined}
+            />
           </div>
 
           <aside className="space-y-4">
             <DisclaimerNotice />
+            <Card className="border-[var(--primary)] p-4">
+              <Badge tone="highlight">Public demo scenarios</Badge>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                One-click fictional samples let recruiters and test participants
+                explore the guided flow without login, AI, or permanent storage.
+              </p>
+              <div className="mt-4 space-y-3">
+                {listDemoScenarios()
+                  .filter((scenario) => scenario.featuredPath === "guided")
+                  .slice(0, 3)
+                  .map((scenario) => (
+                    <div
+                      className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3"
+                      key={scenario.slug}
+                    >
+                      <p className="text-sm font-semibold">{scenario.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                        {scenario.summary}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <a
+                          className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white no-underline"
+                          href={getDemoGuidedHref(scenario)}
+                        >
+                          Open guided sample
+                        </a>
+                        <a
+                          className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line)] px-3 py-2 text-sm font-semibold no-underline"
+                          href={getDemoDescribeHref(scenario)}
+                        >
+                          Start describe path
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Card>
             <Card className="p-4">
               <h2 className="text-base font-bold">What information is needed</h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">

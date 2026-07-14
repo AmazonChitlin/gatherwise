@@ -16,9 +16,12 @@ import {
   type ReviewFact
 } from "@/lib/intake-review";
 import type { EventFactFieldKey } from "@/lib/event-facts";
+import type { IntakeInput } from "@/lib/schemas";
 
 type IntakeExperienceProps = {
   initialPath: "describe" | "guided";
+  prefilledValues?: IntakeInput;
+  demoTitle?: string;
 };
 
 type DescribePhase = "describe" | "review" | "guided";
@@ -27,7 +30,11 @@ type ExtractionResponse = EventExtractionResult & {
   message?: string;
 };
 
-export function IntakeExperience({ initialPath }: IntakeExperienceProps) {
+export function IntakeExperience({
+  initialPath,
+  prefilledValues,
+  demoTitle
+}: IntakeExperienceProps) {
   const [selectedPath, setSelectedPath] = useState<"describe" | "guided">(initialPath);
   const [phase, setPhase] = useState<DescribePhase>(
     initialPath === "guided" ? "guided" : "describe"
@@ -53,8 +60,11 @@ export function IntakeExperience({ initialPath }: IntakeExperienceProps) {
     [missingQuestions]
   );
   const guidedValues = useMemo(
-    () => reviewFactsToIntakeValues(reviewFacts),
-    [reviewFacts, guidedValuesVersion]
+    () =>
+      reviewFacts.length > 0
+        ? reviewFactsToIntakeValues(reviewFacts)
+        : (prefilledValues ?? undefined),
+    [prefilledValues, reviewFacts, guidedValuesVersion]
   );
 
   async function runExtraction() {
@@ -157,6 +167,13 @@ export function IntakeExperience({ initialPath }: IntakeExperienceProps) {
           title="Use the guided form"
         />
       </div>
+
+      {demoTitle ? (
+        <Card className="border-[var(--primary)] bg-[var(--primary-soft)] p-4">
+          <Badge tone="highlight">Fictional demo scenario</Badge>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">You are exploring <strong>{demoTitle}</strong>. This sample uses fictional event details, starts without login, and does not create a permanent record unless you deliberately submit the form.</p>
+        </Card>
+      ) : null}
 
       {selectedPath === "describe" && phase === "describe" ? (
         <Card className="p-5">
@@ -391,6 +408,8 @@ export function IntakeExperience({ initialPath }: IntakeExperienceProps) {
             introText={
               reviewFacts.length > 0
                 ? "Start with the reviewed details Gatherwise found, then fill any gaps you still know. Unknown details can stay unanswered until they matter."
+                : prefilledValues
+                  ? "This fictional sample is prefilled so you can test the guided path without AI. Change anything you want, or reset by choosing another demo."
                 : undefined
             }
           />

@@ -24,6 +24,7 @@ import {
 } from "@/lib/event-facts";
 import { parseResultsSnapshot } from "@/lib/intake-storage";
 import { prisma } from "@/lib/prisma";
+import { getDemoGuidedHref, getDemoScenario } from "@/lib/demo-scenarios";
 import { buildReadinessRoute } from "@/lib/readiness-route";
 import {
   buildEvidenceChecklistForEventFacts,
@@ -51,6 +52,8 @@ export default async function ResultsPage({
   const params = await searchParams;
   const intakeId = getParam(params.intakeId);
   const snapshot = getParam(params.snapshot);
+  const demoSlug = getParam(params.demo);
+  const demo = getDemoScenario(demoSlug);
   const intake = intakeId ? await getIntakeWithUseCase(intakeId) : null;
   const snapshotPayload = snapshot ? parseResultsSnapshot(snapshot) : null;
   const storedPayload = intake
@@ -128,6 +131,29 @@ export default async function ResultsPage({
           <ArrowLeft className="h-4 w-4" />
           Back to planning
         </ButtonLink>
+
+        {demo ? (
+          <Card className="mt-5 border-[var(--primary)] bg-[var(--primary-soft)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <Badge tone="highlight">Fictional demo scenario</Badge>
+                <h2 className="mt-3 text-xl font-black tracking-[-0.02em]">
+                  {demo.title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  {demo.summary} This sample does not require login and does not
+                  create permanent storage.
+                </p>
+              </div>
+              <a
+                className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold no-underline"
+                href={getDemoGuidedHref(demo)}
+              >
+                Reset this sample
+              </a>
+            </div>
+          </Card>
+        ) : null}
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="command-card-dark command-pattern p-6">

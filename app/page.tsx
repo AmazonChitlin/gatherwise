@@ -13,6 +13,11 @@ import {
   SectionHeading
 } from "@/components/ui";
 import { supportedJurisdictions } from "@/lib/config";
+import {
+  getDemoGuidedHref,
+  getDemoResultsHref,
+  listDemoScenarios
+} from "@/lib/demo-scenarios";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -43,6 +48,7 @@ const taskAreas = [
 }[];
 
 const launchAreas = supportedJurisdictions.map((area) => area.label);
+const demoScenarios = listDemoScenarios();
 
 export default function HomePage() {
   return (
@@ -204,6 +210,43 @@ export default function HomePage() {
             </p>
           </Card>
         </aside>
+      </PageContainer>
+
+      <PageContainer className="py-0 pb-12">
+        <Card className="p-6">
+          <SectionHeading
+            description="Every sample below is fictional, starts in one click, uses no login, and relies on trusted live source links."
+            title="Public demo scenarios"
+          />
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {demoScenarios.map((scenario) => (
+              <Card className="p-5" key={scenario.slug}>
+                <Badge tone="highlight">Fictional demo</Badge>
+                <h3 className="mt-4 text-lg font-extrabold">{scenario.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  {scenario.summary}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  {scenario.whyItMatters}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a
+                    className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white no-underline"
+                    href={getDemoResultsHref(scenario)}
+                  >
+                    One-click demo
+                  </a>
+                  <a
+                    className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line)] px-3 py-2 text-sm font-semibold no-underline"
+                    href={getDemoGuidedHref(scenario)}
+                  >
+                    Guided sample
+                  </a>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </Card>
       </PageContainer>
 
       <PageContainer className="py-0 pb-12">
