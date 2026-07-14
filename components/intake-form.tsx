@@ -106,11 +106,12 @@ export function IntakeForm() {
       });
       const payload = (await response.json()) as {
         intakeId?: string;
+        snapshot?: string;
         errors?: Record<string, string>;
         message?: string;
       };
 
-      if (!response.ok || !payload.intakeId) {
+      if (!response.ok || (!payload.intakeId && !payload.snapshot)) {
         setErrors(payload.errors ?? {});
         setSubmitError(
           payload.message ??
@@ -119,7 +120,12 @@ export function IntakeForm() {
         return;
       }
 
-      router.push(`/results?intakeId=${payload.intakeId}`);
+      if (payload.intakeId) {
+        router.push(`/results?intakeId=${payload.intakeId}`);
+        return;
+      }
+
+      router.push(`/results?snapshot=${payload.snapshot}`);
     } catch {
       setSubmitError("We could not reach the intake service. Please try again.");
     } finally {

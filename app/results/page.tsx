@@ -5,10 +5,12 @@ import { DisclaimerNotice } from "@/components/disclaimer-notice";
 import { EventLocalIcon } from "@/components/eventlocal-icons";
 import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
 import {
+  findSupportedJurisdiction,
   findSupportedJurisdictionByNormalizedCode,
   supportedJurisdictions
 } from "@/lib/config";
 import { parseStoredIntakePayload } from "@/lib/event-facts";
+import { parseResultsSnapshot } from "@/lib/intake-storage";
 import { prisma } from "@/lib/prisma";
 import { futurePaidProducts } from "@/lib/future-products";
 import { buildChecklistForIntake, type ChecklistItem } from "@/lib/rule-engine";
@@ -43,9 +45,16 @@ export default async function ResultsPage({
 }) {
   const params = await searchParams;
   const intakeId = getParam(params.intakeId);
+  const snapshot = getParam(params.snapshot);
   const intake = intakeId ? await getIntakeWithUseCase(intakeId) : null;
+  const snapshotPayload = snapshot ? parseResultsSnapshot(snapshot) : null;
+  const intakeInput = intake
+    ? toIntakeInput(intake)
+    : snapshotPayload?.intake
+      ? normalizeSnapshotIntake(snapshotPayload.intake)
+      : null;
 
-  if (!intake) {
+  if (!intakeInput) {
     return (
       <main className="min-h-screen">
         <PageContainer className="max-w-4xl py-10">
@@ -70,13 +79,16 @@ export default async function ResultsPage({
     );
   }
 
-  const intakeInput = toIntakeInput(intake);
   const checklistItems = await buildChecklistForIntake(intakeInput);
   const timelineItems = formatTimeline(checklistItems);
   const redFlags = buildRedFlags(checklistItems);
   const jurisdictionGroups = groupByJurisdiction(checklistItems);
   const agencyContacts = uniqueAgencyContacts(checklistItems);
   const topItems = topItemsToCheckFirst(checklistItems);
+  const cityLabel =
+    findSupportedJurisdiction(intakeInput.city)?.label ?? intakeInput.city;
+  const propertyLabel =
+    venueLabel(intakeInput.propertyUse) ?? intakeInput.propertyUse;
 
   return (
     <main className="min-h-screen">
@@ -90,7 +102,7 @@ export default async function ResultsPage({
           <Card className="command-card-dark command-pattern p-6">
             <Badge tone="highlight">Readiness dashboard</Badge>
             <h1 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em]">
-              {intake.eventName} readiness summary
+              {intakeInput.eventName} readiness summary
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
               Based on the details you provided, this summary shows what may
@@ -102,32 +114,32 @@ export default async function ResultsPage({
               <SummaryItem
                 label="City"
                 tone="dark"
-                value={intake.city ?? "Not provided"}
+                value={cityLabel ?? "Not provided"}
               />
               <SummaryItem
                 label="County"
                 tone="dark"
-                value={intake.county ?? "Not provided"}
+                value={intakeInput.county ?? "Not provided"}
               />
               <SummaryItem
                 label="Event type"
                 tone="dark"
-                value={intake.eventType}
+                value={intakeInput.eventType}
               />
               <SummaryItem
                 label="Property"
                 tone="dark"
-                value={intake.venueType}
+                value={propertyLabel}
               />
               <SummaryItem
                 label="Attendance"
                 tone="dark"
-                value={String(intake.expectedAttendance)}
+                value={String(intakeInput.expectedAttendance)}
               />
               <SummaryItem
                 label="Vendors"
                 tone="dark"
-                value={String(intake.vendorCount)}
+                value={String(intakeInput.vendorCount)}
               />
             </dl>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -596,4 +608,42 @@ function cityCodeFromIntake(intake: IntakeWithUseCase) {
 
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function normalizeSnapshotIntake(input: Partial<IntakeInput>): IntakeInput {
+  return {
+    ...input,
+    eventName: input.eventName ?? "Event",
+    city: input.city ?? "phoenix",
+    county: input.county ?? "Maricopa County",
+    useCase: input.useCase ?? "multi-vendor-market",
+    eventType: input.eventType ?? "outdoor-market",
+    propertyUse: input.propertyUse ?? "private-property",
+    expectedAttendance: input.expectedAttendance ?? 1,
+    vendorCount: input.vendorCount ?? 1,
+    eventDate: input.eventDate ?? new Date().toISOString().slice(0, 10),
+    recurrence: input.recurrence ?? "one-time",
+    hasFood: input.hasFood ?? false,
+    hasFoodTruck: input.hasFoodTruck ?? false,
+    hasRetailSales: input.hasRetailSales ?? false,
+    hasAlcohol: input.hasAlcohol ?? false,
+    hasAmplifiedSound: input.hasAmplifiedSound ?? false,
+    hasTemporaryStructure: input.hasTemporaryStructure ?? false,
+    hasGenerator: input.hasGenerator ?? false,
+    hasOpenFlame: input.hasOpenFlame ?? false,
+    hasStreetSidewalkOrParkingImpact:
+      input.hasStreetSidewalkOrParkingImpact ?? false
+  };
+}
+
+function venueLabel(propertyUse: IntakeInput["propertyUse"]) {
+  return (
+    {
+      "private-property": "Private property",
+      "parking-lot": "Parking lot or outdoor private space",
+      "public-property": "Public property",
+      "park-or-plaza": "Park or plaza",
+      "licensed-venue": "Existing licensed venue"
+    } satisfies Record<IntakeInput["propertyUse"], string>
+  )[propertyUse];
 }

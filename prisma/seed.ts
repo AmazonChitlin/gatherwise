@@ -1,11 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { ruleSeedData, useCaseSeedData } from "./seed-data/rules";
+import { validateSeedIntegrity } from "./seed-integrity";
 import { validateSeedRules } from "./seed-validation";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const validatedRuleSeedData = validateSeedRules(ruleSeedData);
+  validateSeedIntegrity(validatedRuleSeedData, useCaseSeedData);
 
   await prisma.ruleRecord.deleteMany({
     where: {

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { findSupportedJurisdiction } from "@/lib/config";
 import { intakeToEventFacts, serializeStoredIntakePayload } from "@/lib/event-facts";
+import {
+  createResultsSnapshot,
+  shouldPersistIntakeSubmissions
+} from "@/lib/intake-storage";
 import { buildIntakeCompatibilityFacts } from "@/lib/intake-persistence";
 import { intakeSchema } from "@/lib/schemas";
 
@@ -35,6 +39,24 @@ export async function POST(request: Request) {
     : null;
   const compatibilityFacts = buildIntakeCompatibilityFacts(data);
   const eventFacts = intakeToEventFacts(data);
+  const serializedPayload = serializeStoredIntakePayload(data, eventFacts);
+
+  if (!shouldPersistIntakeSubmissions()) {
+    try {
+      return NextResponse.json({
+        snapshot: createResultsSnapshot(data),
+        persistence: "stateless"
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          message:
+            "We could not prepare a safe shareable demo session for this intake."
+        },
+        { status: 413 }
+      );
+    }
+  }
 
   const intake = await prisma.intakeSubmission.create({
     data: {
@@ -64,11 +86,11 @@ export async function POST(request: Request) {
       isTicketed: compatibilityFacts.isTicketed,
       isMultiVendor: data.vendorCount > 1,
       isRecurring: compatibilityFacts.isRecurring,
-      rawAnswers: serializeStoredIntakePayload(data, eventFacts),
+      rawAnswers: serializedPayload,
       jurisdictionId: jurisdiction?.id,
       useCaseId: useCase?.id
     }
   });
 
-  return NextResponse.json({ intakeId: intake.id });
+  return NextResponse.json({ intakeId: intake.id, persistence: "database" });
 }
