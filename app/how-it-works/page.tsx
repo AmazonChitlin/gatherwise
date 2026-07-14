@@ -1,83 +1,172 @@
 import type { Metadata } from "next";
-import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
-import { DisclaimerNotice } from "@/components/disclaimer-notice";
+import { Bot, Landmark, ShieldCheck, UserRoundCheck } from "lucide-react";
+import { CivicButtonLink, CivicStatus } from "@/components/civic";
 
 export const metadata: Metadata = {
   title: "How It Works",
   description:
-    "See how Gatherwise turns event details into source-backed readiness guidance for the Arizona pilot."
+    "Follow the Gatherwise route from event description and human review to deterministic evaluation and official evidence.",
 };
 
 const steps = [
-  {
-    title: "Tell us what you know",
-    text: "Start with a description path or the guided form. The current Arizona pilot uses the guided form to keep results source-backed."
-  },
-  {
-    title: "Gatherwise matches your details",
-    text: "The app compares your event facts with structured city, county, and state rule records."
-  },
-  {
-    title: "Review what may apply",
-    text: "Results highlight what may apply, what still needs review, and which details may change the outcome."
-  },
-  {
-    title: "Check the official source",
-    text: "Use the linked source and agency information to confirm forms, deadlines, fees, and current instructions."
-  }
-];
+  [
+    "01",
+    "Describe",
+    "Use plain language or the guided form. The server-only extraction provider can map a description to known event fields without choosing requirements.",
+  ],
+  [
+    "02",
+    "Review",
+    "Confirm, edit, or leave each fact unknown. Extracted facts cannot drive evaluation until the review state allows it.",
+  ],
+  [
+    "03",
+    "Evaluate",
+    "The deterministic rule engine compares confirmed facts with versioned Arizona rule records and captures the evaluation trace.",
+  ],
+  [
+    "04",
+    "Verify",
+    "Read why a result appeared, open its official source, and check current agency instructions before relying on it.",
+  ],
+] as const;
 
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen">
-      <PageContainer className="max-w-5xl py-10">
-        <section className="command-pattern rounded-[28px] bg-[var(--navy)] p-6 text-white shadow-[var(--shadow)] lg:p-8">
-          <Badge tone="highlight">How it works</Badge>
-          <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight tracking-[-0.04em] sm:text-5xl">
-            Plan first. Check sources before you commit.
-          </h1>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">
-            Gatherwise is built to help organizers, vendors, and venues move
-            from event facts to source-backed next steps without needing agency
-            jargon first.
+    <main className="civic-process-page">
+      <section className="civic-process-hero" aria-labelledby="process-title">
+        <div className="civic-public-wrap civic-process-hero__inner">
+          <div>
+            <p className="civic-data-label-shared">
+              How it works · Arizona pilot
+            </p>
+            <h1 id="process-title">
+              Four turns from event idea to official evidence.
+            </h1>
+          </div>
+          <p>
+            Gatherwise reduces research ambiguity without hiding uncertainty or
+            replacing the official source.
           </p>
-        </section>
-
-        <div className="mt-6">
-          <DisclaimerNotice />
         </div>
+      </section>
 
-        <section className="mt-6 grid gap-4 md:grid-cols-2">
-          {steps.map((step, index) => (
-            <Card className="p-5" key={step.title}>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-black text-white">
-                {index + 1}
-              </div>
-              <h2 className="mt-4 text-xl font-black tracking-[-0.02em]">
-                {step.title}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                {step.text}
+      <section
+        className="civic-process-route"
+        aria-label="Gatherwise readiness process"
+      >
+        <div className="civic-public-wrap">
+          <ol>
+            {steps.map(([number, title, text]) => (
+              <li key={number}>
+                <span aria-hidden="true">{number}</span>
+                <div>
+                  <h2>{title}</h2>
+                  <p>{text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section
+        className="civic-process-boundary"
+        aria-labelledby="boundary-title"
+      >
+        <div className="civic-public-wrap">
+          <header className="civic-public-heading civic-public-heading--light">
+            <p className="civic-data-label-shared">Authority boundary</p>
+            <h2 id="boundary-title">
+              The model drafts language. The rule engine owns the result.
+            </h2>
+          </header>
+          <div className="civic-process-diagram">
+            <ProcessNode
+              icon={Bot}
+              label="AI extraction"
+              detail="Known fields only"
+            />
+            <ProcessNode
+              icon={UserRoundCheck}
+              label="Human confirmation"
+              detail="Confirmed or unknown"
+            />
+            <ProcessNode
+              icon={ShieldCheck}
+              label="Deterministic rules"
+              detail="Requirements and sources"
+              emphasis
+            />
+            <ProcessNode
+              icon={Landmark}
+              label="Official evidence"
+              detail="Reviewed source records"
+            />
+          </div>
+          <div className="civic-process-rules">
+            <div>
+              <strong>AI may</strong>
+              <p>
+                Extract facts, identify ambiguity, organize evidence, and
+                explain a verified result.
               </p>
-            </Card>
-          ))}
-        </section>
+            </div>
+            <div>
+              <strong>AI may not</strong>
+              <p>
+                Add requirements, agencies, thresholds, deadlines, fees, forms,
+                URLs, or approval claims.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <Card className="mt-6 p-5">
-          <h2 className="text-2xl font-black tracking-[-0.02em]">
-            What the result means
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-            Results are based on the details you provided and the current pilot
-            rule records. They show what may apply, why it may apply, and where
-            to check the official source. They do not approve an event or make
-            a legal determination.
-          </p>
-          <ButtonLink className="mt-5" href="/intake">
-            Plan an event
-          </ButtonLink>
-        </Card>
-      </PageContainer>
+      <section
+        className="civic-process-outcome"
+        aria-labelledby="outcome-title"
+      >
+        <div className="civic-public-wrap civic-process-outcome__inner">
+          <div>
+            <CivicStatus tone="caution">Informational guidance</CivicStatus>
+            <h2 id="outcome-title">
+              The result is a planning route, not permission to proceed.
+            </h2>
+            <p>
+              Sources change. Unknown details can change the result. Unsupported
+              jurisdictions are refused, and human verification is recommended.
+            </p>
+          </div>
+          <CivicButtonLink href="/intake?path=describe">
+            Describe an event
+          </CivicButtonLink>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function ProcessNode({
+  icon: Icon,
+  label,
+  detail,
+  emphasis = false,
+}: {
+  icon: typeof Bot;
+  label: string;
+  detail: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={`civic-process-node${emphasis ? " civic-process-node--authority" : ""}`}
+    >
+      <Icon aria-hidden="true" />
+      <div>
+        <strong>{label}</strong>
+        <span>{detail}</span>
+      </div>
+    </div>
   );
 }

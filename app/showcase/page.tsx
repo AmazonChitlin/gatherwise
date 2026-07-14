@@ -1,475 +1,427 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Bot, CheckCircle2, FileCheck2, GitBranch, MapPinned, Route, SearchCheck, ShieldCheck, TriangleAlert } from "lucide-react";
-import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
-import { DisclaimerNotice } from "@/components/disclaimer-notice";
+import {
+  ArrowRight,
+  Bot,
+  Check,
+  ExternalLink,
+  GitBranch,
+  Landmark,
+  Route,
+  ShieldCheck,
+  UserRoundCheck,
+} from "lucide-react";
+import { CivicButtonLink, CivicStatus } from "@/components/civic";
+import { getDemoResultsHref, getDemoScenario } from "@/lib/demo-scenarios";
 
 export const metadata: Metadata = {
   title: "Showcase",
   description:
-    "Recruiter-focused showcase for Gatherwise: the problem, the hybrid architecture, the Arizona pilot, and how to try the readiness demo.",
+    "Gatherwise product case study: source-grounded event readiness, deterministic rules, human review, and an Arizona pilot.",
   openGraph: {
-    title: "Gatherwise Showcase",
+    title: "Gatherwise: Source-Grounded AI Event Readiness",
     description:
-      "See the recruiter story for Gatherwise: what it does, what AI does and does not do, and why the architecture is trustworthy."
-  }
+      "See the product approach, authority boundary, technical architecture, evaluation method, and public Gatherwise demos.",
+  },
 };
 
 const problemPoints = [
-  "Event answers are scattered across city, county, and state pages.",
-  "Thresholds and lead times change depending on venue, food, sound, traffic, and public-space use.",
-  "Users often do not know which agency vocabulary matters until they are already deep in research.",
-  "Old checklists and copied advice break when the jurisdiction or event setup changes."
+  "A single event can cross city, county, state, venue, food, tax, fire, and public-space guidance.",
+  "The answer changes with details organizers may not know are important yet.",
+  "Copied checklists lose their source trail and become hard to trust when instructions change.",
 ];
 
-const architectureStages = [
-  {
-    icon: Bot,
-    label: "AI stage",
-    title: "AI extracts event facts",
-    text: "Planned boundary: turn a messy event description into structured facts a user can review and correct."
-  },
-  {
-    icon: ShieldCheck,
-    label: "Live today",
-    title: "Verified rules evaluate those facts",
-    text: "Active in the repository: deterministic rule matching compares structured facts with city, county, and state rule records."
-  },
-  {
-    icon: FileCheck2,
-    label: "AI stage",
-    title: "AI explains the verified result",
-    text: "Planned boundary: explain the matched result in plain language without inventing the rule or replacing the source."
-  }
+const approach = [
+  [
+    "01",
+    "Plain-language extraction",
+    "A server-only AI provider maps an event description to known fact fields. Unclear facts remain unknown.",
+  ],
+  [
+    "02",
+    "Human confirmation",
+    "The organizer reviews extracted facts before any requirement evaluation. Confirmed false stays distinct from unknown.",
+  ],
+  [
+    "03",
+    "Deterministic evaluation",
+    "Versioned rule records remain the authority for possible requirements, agencies, lead times, and source selection.",
+  ],
+  [
+    "04",
+    "Official evidence trail",
+    "Each result connects relevant facts to a rule ID and reviewed source record. Grounded explanation is secondary.",
+  ],
+  [
+    "05",
+    "Refusal at the boundary",
+    "Unsupported geography stops the route rather than receiving inferred or adjacent-jurisdiction guidance.",
+  ],
 ] as const;
 
-const syntheticFacts = [
-  "Phoenix",
-  "DIY punk matinee",
-  "Parking-lot venue",
-  "180 attendees",
-  "Amplified sound",
-  "Food vendors"
+const stack = [
+  "Next.js 16 App Router and React 19",
+  "TypeScript strict mode and Zod boundaries",
+  "Prisma 6 with the approved SQLite architecture",
+  "Server-only OpenAI Responses API providers",
+  "Versioned deterministic rule and source records",
+  "Node test runner and a 36-scenario offline evaluation harness",
 ];
 
-const transparencyItems = [
-  {
-    title: "Fact",
-    body: "Parking lot venue, Phoenix, 180 attendees, amplified sound, food vendors."
-  },
-  {
-    title: "Rule",
-    body: "A city event-review route may apply based on venue type, public attendance, and setup details."
-  },
-  {
-    title: "Source",
-    body: "Every matched route should point back to an official city, county, or state source."
-  },
-  {
-    title: "Review date",
-    body: "Verified sources carry a last-checked date so users know when the supporting record was reviewed."
-  },
-  {
-    title: "Unknown information",
-    body: "Missing property-owner approval or public-space details should stay visible because they may change the result."
-  },
-  {
-    title: "Unsupported geography",
-    body: "Unsupported jurisdictions should be refused rather than styled like verified coverage."
-  }
+const contributions = [
+  "Identified the event-readiness problem and researched official Arizona sources.",
+  "Designed the product, Civic Signal visual system, intake review, Readiness Route, Evidence Trail, and simulator.",
+  "Developed the rule architecture and explicit boundary between AI assistance and deterministic authority.",
+  "Built and tested the application with AI-assisted development while retaining product and evidence ownership.",
+  "Created the evaluation dataset, grounding checks, reliability fallbacks, and public recruiter story.",
 ];
 
-const technicalFacts = [
-  "Next.js 16.2.9 App Router with React 19 and TypeScript strict mode.",
-  "Prisma 6 with a SQLite datasource for local development.",
-  "Zod intake validation on the client and server.",
-  "Deterministic rule matching in lib/rule-engine.ts with structured trigger fields.",
-  "Repository-defined checks include npm test, npm run typecheck, and npm run build.",
-  "Current tests cover rule matching, intake validation, source inventory validation, cross-jurisdiction behavior, and design/IA regression."
-];
-
-const evaluationRows = [
-  {
-    label: "Automated verification",
-    status: "Passing",
-    detail: "Repository-defined tests and production build pass on this branch."
-  },
-  {
-    label: "User comprehension metrics",
-    status: "Not collected yet",
-    detail: "Lean UX experiments are documented, but recruiter and user-study metrics are not claimed before they are run."
-  },
-  {
-    label: "Trust methodology",
-    status: "Documented",
-    detail: "The repo now separates fact, rule, source, unsupported, and AI-boundary concerns in docs and UI direction."
-  }
-];
-
-const contributionAreas = [
-  "Problem discovery framed around event-planning friction, scattered agency research, and source trust.",
-  "Official-source research structure using source inventory records and rule-record validation.",
-  "Product design work across IA, Lean UX framing, visual concept exploration, and the Gatherwise design system.",
-  "Rule architecture that keeps deterministic matching separate from page copy and UI conditionals.",
-  "AI boundary design that limits future AI work to fact extraction and explanation instead of rule invention.",
-  "Testing and evaluation through rule, intake, source, design-system, and branding/IA regression coverage.",
-  "AI-assisted development used as a build partner while keeping repository facts, boundaries, and verification explicit."
-];
-
-const limitations = [
-  "Arizona pilot only.",
-  "Informational tool, not approval or permit submission.",
-  "Source pages and agency instructions can change.",
-  "Human verification is still recommended before event day.",
-  "Unsupported jurisdictions should be refused instead of guessed."
-];
+const demos = [
+  "private-property-punk-show",
+  "food-truck-local-art-market",
+  "unsupported-jurisdiction",
+]
+  .map((slug) => getDemoScenario(slug))
+  .filter((demo): demo is NonNullable<typeof demo> => Boolean(demo));
 
 export default function ShowcasePage() {
   return (
-    <main className="min-h-screen">
-      <section className="eventlocal-command-hero">
-        <PageContainer className="relative z-10 grid gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <section className="gw-showcase-stack">
-            <Badge tone="highlight">Arizona pilot</Badge>
-            <div>
-              <p className="gw-showcase-kicker">Gatherwise</p>
-              <h1 className="max-w-4xl text-4xl font-black leading-tight tracking-[-0.04em] text-white sm:text-6xl">
-                Ready. Set. Local.
-              </h1>
-            </div>
-            <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              A recruiter-friendly showcase of a trustworthy event-readiness
-              system that helps organizers, vendors, and venues move from messy
-              event facts to source-backed next steps.
+    <main className="civic-case-study">
+      <section className="civic-case-hero" aria-labelledby="showcase-title">
+        <div className="civic-public-wrap civic-case-hero__inner">
+          <div className="civic-case-hero__copy">
+            <p className="civic-data-label-shared">
+              Product case study · Arizona pilot
             </p>
-            <div className="flex flex-wrap gap-3">
-              <ButtonLink aria-label="Try the readiness demo" href="/intake?path=guided">
-                Try the readiness demo
-                <ArrowRight className="h-4 w-4" />
-              </ButtonLink>
+            <h1 id="showcase-title">
+              Gatherwise turns event uncertainty into a source trail.
+            </h1>
+            <p>
+              A source-grounded readiness tool for organizers, vendors, and
+              venues. AI structures the event. People confirm the facts.
+              Deterministic rules select possible requirements and evidence.
+            </p>
+            <div className="civic-case-hero__actions">
+              <CivicButtonLink href="/intake?path=describe">
+                Try the readiness demo <ArrowRight aria-hidden="true" />
+              </CivicButtonLink>
               <Link
-                aria-label="See the architecture section"
-                className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-white/18 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                className="civic-text-link civic-text-link--light focus-ring"
                 href="#architecture"
               >
                 See the architecture
               </Link>
             </div>
-          </section>
+          </div>
 
-          <Card className="border-white/15 bg-white p-5 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
-            <div className="gw-showcase-route-shell">
-              <div className="gw-showcase-route-line" aria-hidden="true" />
-              <div className="gw-showcase-route-stop">
-                <Badge tone="primary">Route motif</Badge>
-                <h2 className="mt-3 text-xl font-extrabold">
-                  One event, one route, one source trail.
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Gatherwise is designed to show what may apply, why it may
-                  apply, and where the official evidence lives, without hiding
-                  uncertainty.
-                </p>
-              </div>
-              <div className="gw-showcase-route-mini-grid">
-                <div className="gw-showcase-mini-card">
-                  <span className="gw-text-label text-[var(--primary-strong)]">User</span>
-                  <p>Organizer, vendor, or venue</p>
-                </div>
-                <div className="gw-showcase-mini-card">
-                  <span className="gw-text-label text-[var(--verified-strong)]">Trust</span>
-                  <p>Fact to rule to source</p>
-                </div>
-                <div className="gw-showcase-mini-card">
-                  <span className="gw-text-label text-[var(--secondary-strong)]">Boundary</span>
-                  <p>AI helps interpret, not invent rules</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </PageContainer>
+          <CaseInterface />
+        </div>
       </section>
 
-      <PageContainer className="py-0 pb-12">
-        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <Card className="p-6">
-            <Badge tone="warning">The tangled problem</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Event readiness breaks across agencies, thresholds, and source pages.
+      <section className="civic-case-problem" aria-labelledby="problem-title">
+        <div className="civic-public-wrap civic-case-problem__inner">
+          <header>
+            <p className="civic-data-label-shared">The problem</p>
+            <h2 id="problem-title">
+              Readiness information is fragmented before planning even starts.
             </h2>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--muted)]">
-              {problemPoints.map((item) => (
-                <li className="flex gap-3" key={item}>
-                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          </header>
+          <ol>
+            {problemPoints.map((point, index) => (
+              <li key={point}>
+                <span>0{index + 1}</span>
+                <p>{point}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-          <section id="architecture">
-            <Card className="p-6">
-              <Badge tone="verified">The hybrid system</Badge>
-              <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-                AI has a narrow job. Verified rules stay in charge.
-              </h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                The intended system boundary is explicit: AI can help structure
-                facts and explain results, but the rule decision should still come
-                from verified deterministic logic tied to official sources.
-              </p>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {architectureStages.map((stage) => {
-                  const Icon = stage.icon;
-
-                  return (
-                    <div
-                      className={`rounded-[var(--radius-card)] border p-4 ${
-                        stage.label === "Live today"
-                          ? "border-[var(--secondary)] bg-[var(--secondary-soft)]"
-                          : "border-[var(--line)] bg-[var(--surface-muted)]"
-                      }`}
-                      key={stage.title}
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--primary)]">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="mt-4">
-                        <Badge
-                          tone={stage.label === "Live today" ? "success" : "secondary"}
-                        >
-                          {stage.label}
-                        </Badge>
-                      </div>
-                      <h3 className="mt-3 text-lg font-extrabold">{stage.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                        {stage.text}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          </section>
-        </section>
-      </PageContainer>
-
-      <PageContainer className="py-0 pb-12">
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="p-6">
-            <Badge tone="primary">Signature experience</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Readiness Route: DIY punk matinee in Phoenix
+      <section className="civic-case-users" aria-labelledby="users-title">
+        <div className="civic-public-wrap civic-case-users__inner">
+          <div>
+            <p className="civic-data-label-shared">Who it helps</p>
+            <h2 id="users-title">
+              People planning across an unfamiliar local system.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Synthetic event, real interaction model. The route is designed to
-              show what happened, why it happened, and what still needs review.
+          </div>
+          <dl>
+            <div>
+              <dt>Organizer</dt>
+              <dd>Needs a useful first route without municipal terminology.</dd>
+            </div>
+            <div>
+              <dt>Vendor</dt>
+              <dd>
+                Needs to understand which event details affect their own next
+                steps.
+              </dd>
+            </div>
+            <div>
+              <dt>Venue</dt>
+              <dd>
+                Needs facts, rule rationale, and official evidence kept visibly
+                separate.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="civic-case-approach" aria-labelledby="approach-title">
+        <div className="civic-public-wrap">
+          <header className="civic-public-heading">
+            <p className="civic-data-label-shared">Product approach</p>
+            <h2 id="approach-title">
+              One authority chain, five deliberate stages.
+            </h2>
+          </header>
+          <ol className="civic-case-route">
+            {approach.map(([number, title, body]) => (
+              <li key={number}>
+                <span aria-hidden="true">{number}</span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section
+        className="civic-case-architecture"
+        id="architecture"
+        aria-labelledby="architecture-title"
+      >
+        <div className="civic-public-wrap">
+          <header className="civic-public-heading civic-public-heading--light">
+            <p className="civic-data-label-shared">Hybrid architecture</p>
+            <h2 id="architecture-title">AI assists. Verified logic decides.</h2>
+            <p>
+              AI never selects requirements, agencies, fees, thresholds,
+              deadlines, forms, or URLs.
             </p>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {syntheticFacts.map((fact) => (
-                <span
-                  className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-muted)] px-3 py-2 text-xs font-bold text-[var(--foreground)]"
-                  key={fact}
-                >
-                  <MapPinned className="h-3.5 w-3.5 text-[var(--primary)]" />
-                  {fact}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-6 gw-showcase-stack">
-              <RouteCard
-                badge="Route stop 01"
-                body="Parking-lot use plus public attendance suggests a city event-review path may apply."
-                title="City route may apply"
-              />
-              <RouteCard
-                badge="Route stop 02"
-                body="Food vendors add county food guidance and can change what needs review."
-                title="County food route joins the stack"
-              />
-              <RouteCard
-                badge="Route stop 03"
-                body="Amplified sound and missing property-owner approval keep one branch unresolved."
-                title="This detail may change your results"
-              />
-            </div>
-          </Card>
-
-          <aside className="gw-showcase-stack">
-            <DisclaimerNotice />
-            <Card className="p-5">
-              <Badge tone="verified">How to try it</Badge>
-              <h3 className="mt-3 text-xl font-extrabold">
-                Use the guided form today
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                The Arizona pilot currently supports the guided form. The
-                describe-my-event path and AI extraction layer are still planned
-                boundaries, not live behavior.
-              </p>
-              <ButtonLink className="mt-4" href="/intake?path=guided">
-                Try the readiness demo
-              </ButtonLink>
-            </Card>
+          </header>
+          <div
+            className="civic-architecture-diagram"
+            role="img"
+            aria-label="Event text moves through AI extraction, human confirmation, deterministic rules, and official evidence"
+          >
+            <ArchitectureNode
+              icon={Bot}
+              label="AI extraction"
+              meta="Draft facts"
+              tone="ai"
+            />
+            <ArchitectureNode
+              icon={UserRoundCheck}
+              label="Human review"
+              meta="Confirmed facts"
+              tone="human"
+            />
+            <ArchitectureNode
+              icon={ShieldCheck}
+              label="Rule engine"
+              meta="Deterministic authority"
+              tone="rule"
+            />
+            <ArchitectureNode
+              icon={Landmark}
+              label="Official evidence"
+              meta="Trusted records"
+              tone="source"
+            />
+          </div>
+          <aside className="civic-case-refusal">
+            <CivicStatus tone="critical">Unsupported geography</CivicStatus>
+            <p>
+              The route stops before evaluation. Gatherwise does not borrow
+              rules from the nearest supported city.
+            </p>
           </aside>
-        </section>
-      </PageContainer>
+        </div>
+      </section>
 
-      <PageContainer className="py-0 pb-12">
-        <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <Card className="p-6">
-            <Badge tone="verified">Evidence and transparency</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Trust comes from boundaries, not polish.
-            </h2>
-            <div className="mt-5 grid gap-3">
-              {transparencyItems.map((item) => (
-                <div
-                  className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4"
-                  key={item.title}
-                >
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
-                    {item.title}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {item.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <Badge tone="secondary">Technical proof</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Verified repository facts only
-            </h2>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--muted)]">
-              {technicalFacts.map((fact) => (
-                <li className="flex gap-3" key={fact}>
-                  <GitBranch className="mt-0.5 h-4 w-4 shrink-0 text-[var(--secondary)]" />
-                  <span>{fact}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </section>
-      </PageContainer>
-
-      <PageContainer className="py-0 pb-12">
-        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className="p-6">
-            <Badge tone="success">Evaluation</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Reproducible status over vanity metrics.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Until user-study numbers exist, the page shows reproducible status
-              and evaluation methodology instead of filler metrics.
+      <section
+        className="civic-case-evaluation"
+        aria-labelledby="evaluation-title"
+      >
+        <div className="civic-public-wrap civic-case-evaluation__grid">
+          <header>
+            <p className="civic-data-label-shared">Evaluation methodology</p>
+            <h2 id="evaluation-title">Evidence before performance claims.</h2>
+            <p>
+              The offline harness runs 36 synthetic scenarios across supported
+              jurisdictions, boundaries, missing facts, contradictions, prompt
+              injection, grounding, and failure fallbacks. Usability findings
+              remain separate until participant sessions occur.
             </p>
-            <div className="mt-5 grid gap-3">
-              {evaluationRows.map((row) => (
-                <div
-                  className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4"
-                  key={row.label}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-base font-bold">{row.label}</h3>
-                    <Badge tone={row.status === "Passing" ? "success" : row.status === "Documented" ? "verified" : "neutral"}>
-                      {row.status}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {row.detail}
-                  </p>
-                </div>
-              ))}
+          </header>
+          <dl>
+            <div>
+              <dt>36</dt>
+              <dd>Synthetic evaluation scenarios</dd>
             </div>
-          </Card>
+            <div>
+              <dt>Offline</dt>
+              <dd>Default evaluation incurs no API cost</dd>
+            </div>
+            <div>
+              <dt>Explicit</dt>
+              <dd>Failures and limitations remain in the report</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
 
-          <Card className="p-6">
-            <Badge tone="highlight">Builder contribution</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              What Paul personally built
+      <section className="civic-case-proof" aria-labelledby="technical-title">
+        <div className="civic-public-wrap civic-case-proof__grid">
+          <div>
+            <p className="civic-data-label-shared">Technical stack</p>
+            <h2 id="technical-title">
+              Built as a traceable system, not a generated answer box.
             </h2>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--muted)]">
-              {contributionAreas.map((item) => (
-                <li className="flex gap-3" key={item}>
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--primary)]" />
-                  <span>{item}</span>
+            <ul>
+              {stack.map((item) => (
+                <li key={item}>
+                  <GitBranch aria-hidden="true" />
+                  {item}
                 </li>
               ))}
             </ul>
-          </Card>
-        </section>
-      </PageContainer>
-
-      <PageContainer className="py-0 pb-12">
-        <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-          <Card className="p-6">
-            <Badge tone="warning">Limitations</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Direct limits keep the architecture trustworthy.
-            </h2>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--muted)]">
-              {limitations.map((item) => (
-                <li className="flex gap-3" key={item}>
-                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
-                  <span>{item}</span>
+          </div>
+          <div className="civic-case-contribution">
+            <p className="civic-data-label-shared">Builder contribution</p>
+            <h2>What Paul personally implemented</h2>
+            <ul>
+              {contributions.map((item) => (
+                <li key={item}>
+                  <Check aria-hidden="true" />
+                  {item}
                 </li>
               ))}
             </ul>
-          </Card>
+            <a
+              className="civic-source-link focus-ring"
+              href="https://github.com/AmazonChitlin/gatherwise"
+              rel="noreferrer"
+              target="_blank"
+            >
+              View the public repository <ExternalLink aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      </section>
 
-          <Card className="p-6">
-            <Badge tone="primary">Next action</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">
-              Try the public demo path.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Use the guided Arizona pilot flow to see how Gatherwise turns
-              event details into a source-backed readiness summary.
+      <section className="civic-case-demos" aria-labelledby="demos-title">
+        <div className="civic-public-wrap">
+          <header className="civic-public-heading">
+            <p className="civic-data-label-shared">
+              Public demos · Fictional data
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <ButtonLink href="/intake?path=guided">
-                Try the readiness demo
-                <ArrowRight className="h-4 w-4" />
-              </ButtonLink>
-              <Link
-                className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] px-3 py-2 text-sm font-semibold text-[var(--primary-strong)] underline"
-                href="#architecture"
-              >
-                Jump back to architecture
-              </Link>
-            </div>
-          </Card>
-        </section>
-      </PageContainer>
+            <h2 id="demos-title">Try three different readiness boundaries.</h2>
+          </header>
+          <div className="civic-case-demo-list">
+            {demos.map((demo, index) => (
+              <article key={demo.slug}>
+                <span aria-hidden="true">0{index + 1}</span>
+                <div>
+                  <h3>{demo.title}</h3>
+                  <p>{demo.summary}</p>
+                </div>
+                <Link
+                  className="civic-results-action focus-ring"
+                  href={getDemoResultsHref(demo)}
+                >
+                  Open fictional demo <ArrowRight aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="civic-case-limit" aria-labelledby="limitations-title">
+        <div className="civic-public-wrap civic-case-limit__inner">
+          <div>
+            <p className="civic-data-label-shared">Limitations</p>
+            <h2 id="limitations-title">A useful route is not an approval.</h2>
+          </div>
+          <ul>
+            <li>Arizona pilot coverage only.</li>
+            <li>Informational guidance, not a legal determination.</li>
+            <li>Official sources can change after review.</li>
+            <li>Human verification remains recommended.</li>
+            <li>
+              AI-disabled and failed-provider states use deterministic
+              fallbacks.
+            </li>
+          </ul>
+        </div>
+      </section>
     </main>
   );
 }
 
-function RouteCard({
-  badge,
-  body,
-  title
+function CaseInterface() {
+  return (
+    <div
+      className="civic-case-interface"
+      aria-label="Gatherwise result example"
+    >
+      <div className="civic-case-interface__bar">
+        <span>PHX / ROUTE 04</span>
+        <span>FICTIONAL EVENT</span>
+      </div>
+      <div className="civic-case-interface__idea">
+        <p>Event idea</p>
+        <strong>Saturday punk show in a private Phoenix parking lot...</strong>
+      </div>
+      <div className="civic-case-interface__facts">
+        <span>01</span>
+        <div>
+          <p>Reviewed facts</p>
+          <strong>Phoenix · 300 people · amplified sound</strong>
+        </div>
+      </div>
+      <div className="civic-case-interface__rule">
+        <span>02</span>
+        <div>
+          <p>Deterministic result</p>
+          <strong>Outdoor event review may apply</strong>
+        </div>
+      </div>
+      <div className="civic-case-interface__source">
+        <Route aria-hidden="true" />
+        <div>
+          <p>Official evidence</p>
+          <strong>City of Phoenix source record</strong>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArchitectureNode({
+  icon: Icon,
+  label,
+  meta,
+  tone,
 }: {
-  badge: string;
-  body: string;
-  title: string;
+  icon: typeof Bot;
+  label: string;
+  meta: string;
+  tone: string;
 }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary-strong)]">
-          <Route className="h-3.5 w-3.5" />
-          {badge}
-        </span>
+    <div className={`civic-architecture-node civic-architecture-node--${tone}`}>
+      <Icon aria-hidden="true" />
+      <div>
+        <strong>{label}</strong>
+        <span>{meta}</span>
       </div>
-      <h3 className="mt-3 text-lg font-extrabold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{body}</p>
     </div>
   );
 }

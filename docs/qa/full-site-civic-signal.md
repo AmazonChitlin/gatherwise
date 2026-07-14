@@ -91,3 +91,14 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - Browser checks passed at 1440 and 320 CSS pixels with no horizontal overflow, no controls below 44 pixels, and no console warnings or errors. A Phoenix-to-Tempe comparison returned a deterministic changed-fact line and added-requirement group.
 - Supported, unsupported, zero-rule, several-rule, missing-fact, source-link, fallback explanation, disclosure, responsive DOM, and simulator contracts are covered by the existing and expanded test suite.
 - Verification: `npm test` passed 261 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.
+
+## Public information pages verification
+
+- `/showcase` is now a recruiter-focused case study with a real interface fragment, problem and user framing, a five-stage product approach, an explicit AI/rule authority boundary, evaluation methodology, verified stack facts, Paul’s contribution, demo links, repository link, and current limitations.
+- `/how-it-works` uses one numbered Describe, Review, Evaluate, Verify route and one architecture diagram. It states that AI can extract or explain facts but cannot select requirements, agencies, thresholds, deadlines, fees, forms, URLs, or approvals.
+- `/sources` is generated from the authoritative 46-record source inventory and groups records by jurisdiction and agency. It renders source status, title, category, review date, stable record ID, and the full official URL; 45 available source URLs remain direct keyboard-accessible links and the unavailable placeholder is not presented as an official link.
+- `/about` now gives a concise account of the Arizona pilot, source-grounded method, human confirmation, refusal behavior, product principles, and present limitations without unsupported adoption or approval claims.
+- The 36-scenario evaluation claim remains because the current offline dataset contains 36 scenarios. No automated test total is embedded in public copy because it would become stale; no customer, adoption, approval, or success-rate claims were added.
+- Route and CSS contracts cover semantic landmarks and headings, safe external links, 44-pixel controls, visible focus, mobile reflow, and reduced motion. The in-app browser could not reach this workspace’s localhost in the current session, so no visual-browser pass is claimed for this task.
+- Local production HTTP checks returned `200` for `/showcase`, `/how-it-works`, `/sources`, `/about`, and `/api/health`. Host-side output contained no server errors during those requests.
+- Verification: `npm test` passed 268 tests; type checking and the production build passed; the offline evaluation completed all 36 scenarios in dataset `2026-07-13.1`.
