@@ -360,6 +360,8 @@ const fieldMetadata = {
   }
 >;
 
+export const eventFactFieldKeys = Object.keys(fieldMetadata) as EventFactFieldKey[];
+
 const eventFactStatusSchema = z.enum([
   "provided",
   "extracted",
