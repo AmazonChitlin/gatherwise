@@ -61,6 +61,48 @@ test("child controls do not mutate aggregate parent answers", () => {
   }
 });
 
+test("all guided-path transitions invalidate active extraction", () => {
+  assert.match(experience, /function openGuidedForm\(\)[\s\S]*requestGuardRef\.current\.invalidate\(\)/);
+  assert.equal(
+    (experience.match(/onClick=\{openGuidedForm\}/g) ?? []).length,
+    3
+  );
+});
+
+test("explicit cancel keeps its user-facing canceled status", () => {
+  assert.match(
+    experience,
+    /function cancelExtraction\(\)[\s\S]*Description review was canceled\./
+  );
+  assert.match(experience, /role="status"/);
+});
+
+test("retry invalidates the prior request before returning to describe", () => {
+  assert.match(
+    experience,
+    /function retryDescription\(\)[\s\S]*requestGuardRef\.current\.invalidate\(\)[\s\S]*setPhase\("describe"\)/
+  );
+  assert.match(experience, /onClick=\{retryDescription\}/);
+});
+
+test("renders one retail-sales question in Selling and vendors", () => {
+  assert.equal(
+    (intakeForm.match(/checked=\{values\.hasRetailSales === true\}/g) ?? []).length,
+    1
+  );
+  assert.match(intakeForm, /title="Selling and vendors"/);
+});
+
+test("uses factual BYOB copy without permission language", () => {
+  assert.match(intakeForm, /Guests may bring their own alcohol \(BYOB\)/);
+  assert.doesNotMatch(intakeForm, /BYOB may be allowed/);
+});
+
+test("path-choice buttons expose selected state", () => {
+  assert.match(experience, /aria-pressed=\{active\}/);
+  assert.match(experience, /active \? "ring-2 ring-\[var\(--primary\)\]/);
+});
+
 function read(...parts: string[]) {
   return readFileSync(join(process.cwd(), ...parts), "utf8");
 }

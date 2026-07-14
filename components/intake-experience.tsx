@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, ChevronDown, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import { IntakeForm } from "@/components/intake-form";
@@ -16,6 +16,7 @@ import {
   type ReviewFact
 } from "@/lib/intake-review";
 import type { EventFactFieldKey } from "@/lib/event-facts";
+import { ExtractionRequestGuard } from "@/lib/extraction-request-guard";
 import type { IntakeInput } from "@/lib/schemas";
 
 type IntakeExperienceProps = {
@@ -47,7 +48,14 @@ export function IntakeExperience({
   const [editingKey, setEditingKey] = useState<EventFactFieldKey | null>(null);
   const [editValue, setEditValue] = useState<string>("");
   const [guidedValuesVersion, setGuidedValuesVersion] = useState(0);
-  const controllerRef = useRef<AbortController | null>(null);
+  const requestGuardRef = useRef(new ExtractionRequestGuard());
+
+  useEffect(
+    () => () => {
+      requestGuardRef.current.invalidate();
+    },
+    []
+  );
 
   const counts = useMemo(() => countReviewStatuses(reviewFacts), [reviewFacts]);
   const groupedFacts = useMemo(() => groupReviewFacts(reviewFacts), [reviewFacts]);
@@ -73,8 +81,7 @@ export function IntakeExperience({
       return;
     }
 
-    const controller = new AbortController();
-    controllerRef.current = controller;
+    const request = requestGuardRef.current.start();
     setIsExtracting(true);
     setDescribeError("");
 
@@ -83,9 +90,13 @@ export function IntakeExperience({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description }),
-        signal: controller.signal
+        signal: request.controller.signal
       });
       const payload = (await response.json()) as Partial<ExtractionResponse>;
+
+      if (!requestGuardRef.current.isCurrent(request)) {
+        return;
+      }
 
       if (!response.ok || !payload.facts || !payload.ambiguities) {
         setDescribeError(
@@ -100,23 +111,37 @@ export function IntakeExperience({
       setAmbiguities(payload.ambiguities);
       setPhase("review");
     } catch (error) {
-      if (controller.signal.aborted) {
-        setDescribeError("Description review was canceled. You can retry or use the guided form.");
+      if (!requestGuardRef.current.isCurrent(request)) {
         return;
       }
 
       setDescribeError("We could not reach the description review service. Use the guided form instead.");
     } finally {
-      setIsExtracting(false);
-      controllerRef.current = null;
+      if (requestGuardRef.current.finish(request)) {
+        setIsExtracting(false);
+      }
     }
   }
 
   function cancelExtraction() {
-    controllerRef.current?.abort();
+    requestGuardRef.current.invalidate();
+    setIsExtracting(false);
+    setDescribeError(
+      "Description review was canceled. You can retry or use the guided form."
+    );
+  }
+
+  function retryDescription() {
+    requestGuardRef.current.invalidate();
+    setIsExtracting(false);
+    setDescribeError("");
+    setPhase("describe");
   }
 
   function openGuidedForm() {
+    requestGuardRef.current.invalidate();
+    setIsExtracting(false);
+    setDescribeError("");
     setGuidedValuesVersion((current) => current + 1);
     setSelectedPath("guided");
     setPhase("guided");
@@ -150,6 +175,8 @@ export function IntakeExperience({
           body="Paste a short event description, review what Gatherwise extracted, and then continue with structured details."
           cta="Describe my event"
           onClick={() => {
+            requestGuardRef.current.invalidate();
+            setIsExtracting(false);
             setSelectedPath("describe");
             setPhase(phase === "guided" && reviewFacts.length > 0 ? "review" : "describe");
           }}
@@ -160,10 +187,7 @@ export function IntakeExperience({
           active={selectedPath === "guided"}
           body="Answer step-by-step questions yourself when you want full manual control from the start."
           cta="Use the guided form"
-          onClick={() => {
-            setSelectedPath("guided");
-            setPhase("guided");
-          }}
+          onClick={openGuidedForm}
           title="Use the guided form"
         />
       </div>
@@ -212,7 +236,7 @@ export function IntakeExperience({
             </span>
           </div>
           {describeError ? (
-            <div className="mt-4 rounded-[var(--radius-control)] border border-[var(--accent)] bg-[var(--alert-soft)] p-3 text-sm leading-6 text-[var(--alert-strong)]">
+            <div className="mt-4 rounded-[var(--radius-control)] border border-[var(--accent)] bg-[var(--alert-soft)] p-3 text-sm leading-6 text-[var(--alert-strong)]" role="status">
               {describeError}
             </div>
           ) : null}
@@ -384,7 +408,7 @@ export function IntakeExperience({
             </button>
             <button
               className="focus-ring min-h-[48px] rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold"
-              onClick={() => setPhase("describe")}
+              onClick={retryDescription}
               type="button"
             >
               Retry description
@@ -447,7 +471,10 @@ function PathChoice({
       </div>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{body}</p>
       <button
+        aria-pressed={active}
         className={`focus-ring mt-4 min-h-[48px] w-full rounded-[var(--radius-control)] px-4 py-2 text-sm font-semibold ${
+          active ? "ring-2 ring-[var(--primary)] ring-offset-2 " : ""
+        }${
           primary
             ? "bg-[var(--primary)] text-white"
             : "border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--foreground)]"

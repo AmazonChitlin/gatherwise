@@ -308,13 +308,6 @@ export function IntakeForm({
             }
           />
           <Toggle
-            checked={values.hasRetailSales === true}
-            label="Retail items will be sold"
-            onChange={(hasRetailSales) =>
-              setValues((current) => ({ ...current, hasRetailSales }))
-            }
-          />
-          <Toggle
             checked={values.foodIsPrepackaged === true}
             label="Food is prepackaged"
             onChange={(foodIsPrepackaged) =>
@@ -419,7 +412,7 @@ export function IntakeForm({
           />
           <Toggle
             checked={values.alcoholByob === true}
-            label="BYOB may be allowed"
+            label="Guests may bring their own alcohol (BYOB)"
             onChange={(alcoholByob) =>
               setValues((current) => ({
                 ...current,
