@@ -23,3 +23,26 @@ Establish a non-behavior-changing Gatherwise research baseline on a dedicated br
 - Whether Gatherwise should preserve the current Arizona-first scope or reposition as a broader product.
 - How aggressively to rename code symbols and assets during rebrand work.
 - When to add browser smoke coverage relative to UX and branding changes.
+
+## 2026-07-13
+
+### Decision
+
+Prepare Railway as the initial hosted deployment target without changing the approved Prisma + SQLite architecture.
+
+### Why
+
+- The approved ADR kept SQLite for the Handshake branch.
+- Railway currently supports persistent volumes, which makes hosted SQLite viable for this bounded demo deployment.
+- Railway volumes are mounted only at runtime, so SQLite migration and seed work cannot safely live in build or pre-deploy phases.
+
+### Outcome
+
+- Added a Railway runtime startup path that derives the SQLite database location from the mounted volume when needed.
+- Added a read-only `/api/health` route for Railway health checks.
+- Documented the required volume mount path, public-domain setup, and post-deployment smoke steps.
+
+### Follow-On Decisions Needed
+
+- Whether a later post-Handshake deployment should keep hosted SQLite or move to Postgres for stronger multi-user durability.
+- Whether live AI should be enabled in a hosted environment after server-side key management is approved.

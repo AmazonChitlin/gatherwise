@@ -50,8 +50,11 @@ test("updates core public pages to Gatherwise task language", () => {
 });
 
 test("rebrands the README headline and description", () => {
-  assert.match(readme, /# Gatherwise MVP/);
-  assert.match(readme, /Gatherwise is a Next\.js MVP/);
+  assert.match(readme, /^# Gatherwise$/m);
+  assert.match(
+    readme,
+    /Gatherwise is a source-grounded event-readiness application/
+  );
   assert.doesNotMatch(readme, /^# EventLocal MVP/m);
 });
 

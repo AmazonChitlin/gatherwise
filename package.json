@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0",
     "test": "tsx --test tests/**/*.test.ts",
     "eval:gatherwise": "tsx scripts/eval-gatherwise.ts",
     "eval:gatherwise:live": "tsx scripts/eval-gatherwise.ts --live",

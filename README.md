@@ -237,7 +237,7 @@ Demo and walkthrough docs:
 
 ## Deployment
 
-Recommended deployment flow for this branch:
+Recommended hosted deployment flow for this branch:
 
 1. Install dependencies with `npm ci`
 2. Copy `.env.example` or provide environment variables
@@ -250,10 +250,21 @@ Recommended deployment flow for this branch:
 9. Run `npm run build`
 10. Start with `npm start`
 
+Railway-specific notes for the approved SQLite architecture:
+
+- use a persistent Railway volume
+- mount the volume at `/data`
+- use `./scripts/start-railway.sh` as the Railway start command
+- let runtime startup perform `prisma migrate deploy` and idempotent seed work because Railway volumes are not mounted during build or pre-deploy
+- use `/api/health` as the health-check path
+
 Release docs:
 
 - `docs/gatherwise/deployment-checklist.md`
 - `docs/gatherwise/release-audit.md`
+- `docs/gatherwise/railway-deployment.md`
+- `docs/gatherwise/production-environment.md`
+- `docs/gatherwise/post-deployment-smoke-test.md`
 
 ## Limitations
 

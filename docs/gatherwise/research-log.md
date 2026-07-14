@@ -76,3 +76,19 @@ Establish the repository baseline, document technical constraints, and create a 
 - Should Gatherwise remain Arizona-first in the next phase or simply use the current MVP as a technical shell?
 - Should future brand migration preserve some `eventlocal-*` class/type names temporarily to limit churn, or rename comprehensively once?
 - Is the next best leverage point UX simplification, brand migration, or hosted-readiness hardening?
+
+## 2026-07-13 Hosted Deployment Research
+
+### Railway documentation findings
+
+- Railway volumes are mounted when the service container starts, not during build time.
+- Railway pre-deploy commands run in a separate container and do not have mounted volumes.
+- Railway exposes `RAILWAY_VOLUME_MOUNT_PATH` and `RAILWAY_VOLUME_NAME` automatically when a volume is attached.
+- Railway does not allow replicas on services with volumes.
+- Railway prevents multiple active deployments from sharing the same attached volume, which means redeploys can involve brief downtime.
+
+### Repository implications
+
+- SQLite remains viable on Railway only if the database file is stored on a mounted volume.
+- `prisma migrate deploy` and idempotent seed work must happen in the runtime start path, not Railway pre-deploy.
+- The public Handshake deployment should keep `PERSIST_INTAKE_SUBMISSIONS=false` so demo sessions remain stateless by default even though rule and source data stay seeded in SQLite.

@@ -1,48 +1,67 @@
 # Gatherwise Deployment Checklist
 
-Use this checklist for a clean Handshake-ready deployment of the current Gatherwise branch.
+Use this checklist before pointing a public Handshake submission at the hosted Gatherwise deployment.
 
-## Before Deploying
+## Branch and release gate
 
-- Confirm the branch is `showcase/gatherwise-handshake`.
-- Confirm the working tree is clean.
-- Confirm `.env` values are present for the target environment.
-- Keep AI feature flags disabled unless the server-side key and model configuration are intentionally enabled.
+- Branch is `showcase/gatherwise-handshake`
+- Latest release-preparation baseline was audited from `48807eb`
+- Working tree is clean before release-prep changes
+- No `.env` file is committed
+- No verified rule logic or official source records were changed in the deployment prep
 
-## Install and Prepare
+## Railway service settings
 
-1. Run `npm ci`
-2. Provide environment variables or copy `.env.example` and adjust as needed
-3. Run `npm run prisma:generate`
-4. Run `npx prisma migrate deploy`
-5. Run `npm run prisma:seed`
+- Repository: `AmazonChitlin/gatherwise`
+- Branch: `showcase/gatherwise-handshake`
+- Root directory: `/`
+- Attached persistent volume: yes
+- Volume mount path: `/data`
+- Health check path: `/api/health`
+- Restart policy: `On Failure`
+- Public domain generated
 
-## Verify Before Release
+## Required Railway variables
 
-1. Run `npm run typecheck`
-2. Run `npm test`
-3. Run `npm run eval:gatherwise`
-4. Run `npm run build`
-5. Run `npm start`
-6. Smoke test:
-   `http://localhost:3000/showcase`
-7. Smoke test:
-   `http://localhost:3000/intake`
-8. Smoke test:
-   `http://localhost:3000/sources`
+- `RAILPACK_INSTALL_CMD=npm ci`
+- `PERSIST_INTAKE_SUBMISSIONS=false`
 
-## Public Demo Checks
+Optional explicit database override:
 
-- Open a fictional guided sample from `/intake`
-- Build the readiness summary
-- Confirm the results page shows the Readiness Route
-- Confirm the results page shows the Evidence Trail
-- Confirm official source links render from trusted records
-- Confirm the manual path remains available when AI is disabled
+- `DATABASE_URL=file:/data/gatherwise.db`
 
-## Release Guardrails
+Public deterministic deployment should leave live AI variables unset unless intentionally demonstrating live AI.
 
-- Do not expose unsupported jurisdictions as verified guidance.
-- Do not enable client-side AI credentials.
-- Do not retain raw event descriptions unless the retention decision changes explicitly.
-- Do not treat local writable SQLite storage as the production durability plan; seedable verified data and short-lived demo sessions remain the safe baseline.
+## Local verification before deployment
+
+1. `npm ci`
+2. `npm run prisma:generate`
+3. `npx prisma migrate deploy`
+4. `npm run prisma:seed`
+5. `npm run typecheck`
+6. `npm test`
+7. `npm run eval:gatherwise`
+8. `npm run build`
+9. Start the production server
+10. Smoke-test `/`, `/showcase`, `/about`, `/intake`, `/sources`, `/api/health`
+
+## Hosted smoke-test expectations
+
+- `/showcase` loads directly
+- no login is required
+- guided samples still work
+- manual path still works
+- natural-language path fails safely when AI is disabled
+- Evidence Trail renders
+- Readiness Route renders
+- Event Change Simulator renders
+- official source links remain real and trusted
+- unsupported jurisdictions are refused instead of guessed
+
+## Operational guardrails
+
+- Do not run `prisma migrate dev` in production
+- Do not seed through an unsafe manual reset flow
+- Do not rely on Railway pre-deploy for SQLite volume initialization
+- Do not scale the service to multiple replicas while using the Railway volume
+- Do not enable raw event-description retention by default
