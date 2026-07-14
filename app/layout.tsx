@@ -34,8 +34,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <a className="gw-skip-link" href="#main-content">
+          Skip to main content
+        </a>
         <SiteHeader />
-        {children}
+        <div id="main-content">{children}</div>
         <SiteFooter />
       </body>
     </html>

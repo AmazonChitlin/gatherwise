@@ -12,10 +12,37 @@ import {
   compareRequirementRoutes,
   simulatorChangeSchema
 } from "@/lib/readiness-route";
+import {
+  createRateLimitHeaders,
+  enforceRateLimit,
+  getClientIdentifier,
+  readJsonBody,
+  RequestValidationError
+} from "@/lib/request-guard";
+
+const simulateRateLimit = {
+  limit: 30,
+  windowMs: 60_000
+} as const;
 
 export async function POST(request: Request) {
+  const rateLimit = enforceRateLimit({
+    key: `simulate:${getClientIdentifier(request)}`,
+    rule: simulateRateLimit
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { message: "Too many route comparisons in a short time. Please wait and try again." },
+      {
+        status: 429,
+        headers: createRateLimitHeaders(rateLimit)
+      }
+    );
+  }
+
   try {
-    const body = (await request.json()) as {
+    const body = (await readJsonBody(request)) as {
       eventFacts?: unknown;
       changes?: unknown;
     };
@@ -57,11 +84,26 @@ export async function POST(request: Request) {
     return NextResponse.json({
       route,
       comparison
+    }, {
+      headers: createRateLimitHeaders(rateLimit)
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return NextResponse.json(
+        { message: error.message },
+        {
+          status: 415,
+          headers: createRateLimitHeaders(rateLimit)
+        }
+      );
+    }
+
     return NextResponse.json(
       { message: "We could not compare that route change yet." },
-      { status: 400 }
+      {
+        status: 400,
+        headers: createRateLimitHeaders(rateLimit)
+      }
     );
   }
 }

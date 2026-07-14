@@ -8,9 +8,53 @@ import {
 } from "@/lib/intake-storage";
 import { buildIntakeCompatibilityFacts } from "@/lib/intake-persistence";
 import { intakeSchema } from "@/lib/schemas";
+import {
+  createRateLimitHeaders,
+  enforceRateLimit,
+  getClientIdentifier,
+  readJsonBody,
+  RequestValidationError
+} from "@/lib/request-guard";
+
+const intakeRateLimit = {
+  limit: 24,
+  windowMs: 60_000
+} as const;
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
+  const rateLimit = enforceRateLimit({
+    key: `intake:${getClientIdentifier(request)}`,
+    rule: intakeRateLimit
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        message: "Too many intake attempts in a short time. Please wait and try again."
+      },
+      {
+        status: 429,
+        headers: createRateLimitHeaders(rateLimit)
+      }
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await readJsonBody(request);
+  } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return NextResponse.json(
+        { message: error.message },
+        {
+          status: 415,
+          headers: createRateLimitHeaders(rateLimit)
+        }
+      );
+    }
+
+    throw error;
+  }
   const result = intakeSchema.safeParse(body);
 
   if (!result.success) {
@@ -23,7 +67,10 @@ export async function POST(request: Request) {
           )
         )
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: createRateLimitHeaders(rateLimit)
+      }
     );
   }
 
@@ -43,17 +90,25 @@ export async function POST(request: Request) {
 
   if (!shouldPersistIntakeSubmissions()) {
     try {
-      return NextResponse.json({
-        snapshot: createResultsSnapshot(data),
-        persistence: "stateless"
-      });
+      return NextResponse.json(
+        {
+          snapshot: createResultsSnapshot(data),
+          persistence: "stateless"
+        },
+        {
+          headers: createRateLimitHeaders(rateLimit)
+        }
+      );
     } catch {
       return NextResponse.json(
         {
           message:
             "We could not prepare a safe shareable demo session for this intake."
         },
-        { status: 413 }
+        {
+          status: 413,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
   }
@@ -92,5 +147,10 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json({ intakeId: intake.id, persistence: "database" });
+  return NextResponse.json(
+    { intakeId: intake.id, persistence: "database" },
+    {
+      headers: createRateLimitHeaders(rateLimit)
+    }
+  );
 }

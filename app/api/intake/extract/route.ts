@@ -11,10 +11,22 @@ import {
   ExtractionRequestLimitError,
   ExtractionTimeoutError
 } from "@/lib/ai/extraction";
+import {
+  createRateLimitHeaders,
+  enforceRateLimit,
+  getClientIdentifier,
+  readJsonBody,
+  RequestValidationError
+} from "@/lib/request-guard";
 
 const requestSchema = z.object({
   description: z.string().trim().min(20, "Add a few sentences about the event.")
 });
+
+const extractionRateLimit = {
+  limit: 12,
+  windowMs: 60_000
+} as const;
 
 const logger = {
   info(metadata: object) {
@@ -29,7 +41,40 @@ const logger = {
 };
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
+  const rateLimit = enforceRateLimit({
+    key: `extract:${getClientIdentifier(request)}`,
+    rule: extractionRateLimit
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        message:
+          "The description path is temporarily limited. Use the guided form for now."
+      },
+      {
+        status: 429,
+        headers: createRateLimitHeaders(rateLimit)
+      }
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await readJsonBody(request);
+  } catch (error) {
+    if (error instanceof RequestValidationError) {
+      return NextResponse.json(
+        { message: error.message },
+        {
+          status: 415,
+          headers: createRateLimitHeaders(rateLimit)
+        }
+      );
+    }
+
+    throw error;
+  }
   const parsed = requestSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -38,7 +83,10 @@ export async function POST(request: Request) {
         message: parsed.error.flatten().fieldErrors.description?.[0] ??
           "Add a short event description before continuing."
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: createRateLimitHeaders(rateLimit)
+      }
     );
   }
 
@@ -49,7 +97,9 @@ export async function POST(request: Request) {
     });
     const result = await service.extract(parsed.data.description);
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: createRateLimitHeaders(rateLimit)
+    });
   } catch (error) {
     if (error instanceof ExtractionConfigError) {
       return NextResponse.json(
@@ -57,12 +107,21 @@ export async function POST(request: Request) {
           message:
             "Describe my event is unavailable right now. Use the guided form instead."
         },
-        { status: 503 }
+        {
+          status: 503,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
 
     if (error instanceof ExtractionInputLimitError) {
-      return NextResponse.json({ message: error.message }, { status: 413 });
+      return NextResponse.json(
+        { message: error.message },
+        {
+          status: 413,
+          headers: createRateLimitHeaders(rateLimit)
+        }
+      );
     }
 
     if (error instanceof ExtractionTimeoutError) {
@@ -71,7 +130,10 @@ export async function POST(request: Request) {
           message:
             "The description review took too long. Try again or use the guided form."
         },
-        { status: 504 }
+        {
+          status: 504,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
 
@@ -81,7 +143,10 @@ export async function POST(request: Request) {
           message:
             "The description path is temporarily limited. Use the guided form for now."
         },
-        { status: 429 }
+        {
+          status: 429,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
 
@@ -91,7 +156,10 @@ export async function POST(request: Request) {
           message:
             "We could not turn that description into structured event facts. Try the guided form instead."
         },
-        { status: 422 }
+        {
+          status: 422,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
 
@@ -104,7 +172,10 @@ export async function POST(request: Request) {
           message:
             "We could not extract event details safely. You can retry or use the guided form."
         },
-        { status: 502 }
+        {
+          status: 502,
+          headers: createRateLimitHeaders(rateLimit)
+        }
       );
     }
 
@@ -113,7 +184,10 @@ export async function POST(request: Request) {
         message:
           "We could not review that description right now. Use the guided form instead."
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: createRateLimitHeaders(rateLimit)
+      }
     );
   }
 }

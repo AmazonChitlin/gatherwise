@@ -15,7 +15,7 @@ import type {
   RequirementLevel,
   RuleTriggerFields
 } from "@/lib/types";
-import { officialSourceInventory } from "@/prisma/seed-data/source-inventory";
+import { findOfficialSourceIdByJurisdictionAndUrl } from "@/lib/source-records";
 
 export type EngineRuleRecord = {
   id: string;
@@ -953,17 +953,7 @@ function parseTriggerFields(rule: EngineRuleRecord) {
 }
 
 function sourceIdForRuleRecord(rule: Pick<EngineRuleRecord, "jurisdictionCode" | "sourceUrl">) {
-  if (!rule.jurisdictionCode) {
-    return null;
-  }
-
-  return (
-    officialSourceInventory.find(
-      (source) =>
-        source.jurisdictionCode === rule.jurisdictionCode &&
-        source.sourceUrl === rule.sourceUrl
-    )?.id ?? null
-  );
+  return findOfficialSourceIdByJurisdictionAndUrl(rule);
 }
 
 function toChecklistItem(rule: EngineRuleRecord): ChecklistItem {

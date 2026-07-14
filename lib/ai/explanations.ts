@@ -1,6 +1,6 @@
-import { officialSourceInventory } from "@/prisma/seed-data/source-inventory";
 import type { EventFactsDocument, EventFactFieldKey, RequirementResult } from "@/lib/event-facts";
 import type { EvidenceChecklistItem } from "@/lib/rule-engine";
+import { findOfficialSourceById } from "@/lib/source-records";
 
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_MAX_OUTPUT_TOKENS = 900;
@@ -135,13 +135,13 @@ export function buildExplanationPacket(options: {
   const sourceById = new Map<string, ExplanationSourceRecord>();
 
   for (const result of options.requirementResults) {
-    const sourceRecord = officialSourceInventory.find(
-      (item) =>
-        item.id === result.officialSource.sourceId &&
-        item.sourceUrl === result.officialSource.sourceUrl
-    );
+    const sourceRecord = findOfficialSourceById(result.officialSource.sourceId);
 
-    if (!sourceRecord || !sourceRecord.sourceUrl) {
+    if (
+      !sourceRecord ||
+      !sourceRecord.sourceUrl ||
+      sourceRecord.sourceUrl !== result.officialSource.sourceUrl
+    ) {
       continue;
     }
 
