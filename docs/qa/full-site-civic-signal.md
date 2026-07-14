@@ -11,12 +11,12 @@
 
 ## Baseline checks
 
-| Check | Result |
-| --- | --- |
-| `npm test` | Passed: 223 tests, 0 failed |
-| `npm run typecheck` | Passed |
-| `npm run build` | Passed; Next.js production build completed and generated all expected routes |
-| `npm run eval:gatherwise` | Passed in offline mode; dataset `2026-07-13.1`, 36 scenarios |
+| Check                     | Result                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `npm test`                | Passed: 223 tests, 0 failed                                                  |
+| `npm run typecheck`       | Passed                                                                       |
+| `npm run build`           | Passed; Next.js production build completed and generated all expected routes |
+| `npm run eval:gatherwise` | Passed in offline mode; dataset `2026-07-13.1`, 36 scenarios                 |
 
 ## Known defects to address
 
@@ -71,3 +71,13 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - The foundation uses solid ink, limestone, and paper surfaces with signal orange and cactus semantics, deliberate radii, visible focus rules, 44px controls, and reduced-motion fallbacks.
 - Visual checks passed at desktop and 320px with no horizontal overflow or browser-console errors.
 - Verification: `npm test` passed 253 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.
+
+## Intake workspace verification
+
+- `/intake` now uses a compact dark task introduction, four-stop progress route, two explicit path modes, and one concise supporting rail instead of a generic hero card and repeated sidebar cards.
+- The describe workspace uses a large labeled textarea, matching 4,000-character count, privacy guidance, restrained fact-extraction status, explicit cancel/retry/manual fallback actions, and an `aria-live` status.
+- Review states distinguish extracted facts, needs review, confirmed facts, and unknown facts with icon-plus-text statuses; source text remains visible and the three highest-value questions appear as route forks.
+- The guided form keeps the reviewed-fact submission envelope and corrected aggregate logic while replacing toggle cards with line-based factual controls and numbered semantic fieldsets.
+- Browser checks at 320, 375, 768, 1024, and 1440 CSS pixels found no horizontal overflow and a 44-pixel minimum control height. The planning rail is sticky only at wide desktop widths.
+- Browser console inspection found no warnings or errors. Reduced-motion and responsive intake contracts are covered by component tests.
+- Verification: `npm test` passed 256 tests; type checking, production build, and the 36-scenario offline evaluation are recorded in the final task verification.
