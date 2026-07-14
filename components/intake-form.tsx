@@ -1,50 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import {
-  EventLocalIcon,
-  type EventLocalIconName
-} from "@/components/eventlocal-icons";
 import {
   countyOptions,
   eventTypeOptions,
   recurrenceOptions,
   supportedJurisdictions,
   useCaseOptions,
-  venueTypeOptions
+  venueTypeOptions,
 } from "@/lib/config";
 import { defaultIntakeValues } from "@/lib/intake-defaults";
-import { intakeSchema, type IntakeInput } from "@/lib/schemas";
+import { eventFactFieldKeys } from "@/lib/event-facts";
+import type { ReviewFact } from "@/lib/intake-review";
+import {
+  REVIEWED_INTAKE_SCHEMA_VERSION,
+  reviewedIntakeSubmissionSchema,
+} from "@/lib/reviewed-intake";
+import {
+  intakeSchema,
+  partialIntakeSchema,
+  type IntakeInput,
+  type PartialIntakeInput,
+} from "@/lib/schemas";
 
 type TentSizeRange = NonNullable<IntakeInput["tentSizeRange"]>;
 type IndoorOrOutdoor = NonNullable<IntakeInput["indoorOrOutdoor"]>;
 
 type IntakeFormProps = {
-  initialValues?: IntakeInput;
+  initialValues?: PartialIntakeInput;
   introText?: string;
+  reviewFacts?: ReviewFact[];
 };
 
 export function IntakeForm({
   initialValues,
-  introText = "Start with the basics, then add any details you know. Optional details help Gatherwise match pilot rules more precisely, but you can leave them off if they do not apply."
+  introText = "Start with the basics, then add any details you know. Optional details help Gatherwise match pilot rules more precisely, but you can leave them off if they do not apply.",
+  reviewFacts,
 }: IntakeFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState(initialValues ?? defaultIntakeValues);
+  const [values, setStoredValues] = useState<PartialIntakeInput>(
+    initialValues ?? defaultIntakeValues,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const touchedFieldsRef = useRef(new Set<keyof IntakeInput>());
+  const isReviewedSession = Boolean(reviewFacts?.length);
+
+  function setValues(
+    updater: (current: PartialIntakeInput) => PartialIntakeInput,
+  ) {
+    setStoredValues((current) => {
+      const next = updater(current);
+
+      if (isReviewedSession) {
+        for (const key of eventFactFieldKeys) {
+          if (!Object.is(current[key], next[key])) {
+            touchedFieldsRef.current.add(key);
+          }
+        }
+      }
+
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (initialValues) {
-      setValues(initialValues);
+      setStoredValues(initialValues);
+      touchedFieldsRef.current.clear();
     }
   }, [initialValues]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = intakeSchema.safeParse(values);
+    const result = isReviewedSession
+      ? partialIntakeSchema.safeParse(values)
+      : intakeSchema.safeParse(values);
 
     if (!result.success) {
       setErrors(formatErrors(result.error.flatten().fieldErrors));
@@ -57,10 +98,28 @@ export function IntakeForm({
     setIsSubmitting(true);
 
     try {
+      const requestBody = isReviewedSession
+        ? reviewedIntakeSubmissionSchema.parse({
+            intake: result.data,
+            review: {
+              schemaVersion: REVIEWED_INTAKE_SCHEMA_VERSION,
+              facts: reviewFacts?.map((fact) => ({
+                key: fact.key,
+                status:
+                  fact.reviewStatus === "needs_review"
+                    ? "extracted"
+                    : fact.reviewStatus,
+                value: fact.reviewStatus === "unknown" ? null : fact.value,
+                evidenceText: fact.evidenceText,
+              })),
+              touchedFields: [...touchedFieldsRef.current],
+            },
+          })
+        : result.data;
       const response = await fetch("/api/intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data)
+        body: JSON.stringify(requestBody),
       });
       const payload = (await response.json()) as {
         intakeId?: string;
@@ -73,7 +132,7 @@ export function IntakeForm({
         setErrors(payload.errors ?? {});
         setSubmitError(
           payload.message ??
-            "We could not save this intake yet. Please check the form and try again."
+            "We could not save this intake yet. Please check the form and try again.",
         );
         return;
       }
@@ -85,23 +144,23 @@ export function IntakeForm({
 
       router.push(`/results?snapshot=${payload.snapshot}`);
     } catch {
-      setSubmitError("We could not reach the intake service. Please try again.");
+      setSubmitError(
+        "We could not reach the intake service. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form className="space-y-6" onSubmit={submit}>
+    <form className="civic-intake-form" onSubmit={submit}>
       {submitError ? (
-        <div className="rounded-[var(--radius-control)] border border-[var(--accent)] bg-[var(--alert-soft)] p-3 text-sm leading-6 text-[var(--alert-strong)]">
+        <div className="civic-intake-inline-error" role="alert">
           {submitError}
         </div>
       ) : null}
 
-      <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--muted)]">
-        {introText}
-      </div>
+      <div className="civic-intake-form__intro">{introText}</div>
 
       <Section
         description="Choose the closest city or rule area for where the event will happen."
@@ -115,9 +174,9 @@ export function IntakeForm({
             onChange={(city) => setValues((current) => ({ ...current, city }))}
             options={supportedJurisdictions.map(({ code, label }) => ({
               value: code,
-              label
+              label,
             }))}
-            value={values.city}
+            value={values.city ?? ""}
           />
           <SelectField
             error={errors.county}
@@ -126,7 +185,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, county }))
             }
             options={countyOptions}
-            value={values.county}
+            value={values.county ?? ""}
           />
         </div>
       </Section>
@@ -147,11 +206,11 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  eventName: event.target.value
+                  eventName: event.target.value,
                 }))
               }
               placeholder="Example: Downtown record swap"
-              value={values.eventName}
+              value={values.eventName ?? ""}
             />
           </Field>
           <Field
@@ -165,11 +224,13 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  expectedAttendance: Number(event.target.value)
+                  expectedAttendance: event.target.value
+                    ? Number(event.target.value)
+                    : undefined,
                 }))
               }
               type="number"
-              value={values.expectedAttendance}
+              value={values.expectedAttendance ?? ""}
             />
           </Field>
           <SelectField
@@ -179,7 +240,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, useCase }))
             }
             options={useCaseOptions}
-            value={values.useCase}
+            value={values.useCase ?? ""}
           />
           <SelectField
             error={errors.eventType}
@@ -188,7 +249,7 @@ export function IntakeForm({
               setValues((current) => ({ ...current, eventType }))
             }
             options={eventTypeOptions}
-            value={values.eventType}
+            value={values.eventType ?? ""}
           />
         </div>
       </Section>
@@ -210,15 +271,17 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  vendorCount: Number(event.target.value)
+                  vendorCount: event.target.value
+                    ? Number(event.target.value)
+                    : undefined,
                 }))
               }
               type="number"
-              value={values.vendorCount}
+              value={values.vendorCount ?? ""}
             />
           </Field>
           <Toggle
-            checked={values.hasRetailSales}
+            checked={values.hasRetailSales === true}
             label="Retail items or taxable goods will be sold"
             onChange={(hasRetailSales) =>
               setValues((current) => ({ ...current, hasRetailSales }))
@@ -234,28 +297,17 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasFood}
+            checked={values.hasFood === true}
             label="Food or drinks will be served or sampled"
             onChange={(hasFood) =>
               setValues((current) => ({ ...current, hasFood }))
             }
           />
           <Toggle
-            checked={values.hasFoodTruck}
+            checked={values.hasFoodTruck === true}
             label="A food truck is involved"
             onChange={(hasFoodTruck) =>
-              setValues((current) => ({
-                ...current,
-                hasFoodTruck,
-                foodTruckOrMobileFoodUnit: hasFoodTruck
-              }))
-            }
-          />
-          <Toggle
-            checked={values.hasRetailSales}
-            label="Retail items will be sold"
-            onChange={(hasRetailSales) =>
-              setValues((current) => ({ ...current, hasRetailSales }))
+              setValues((current) => ({ ...current, hasFoodTruck }))
             }
           />
           <Toggle
@@ -272,7 +324,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 foodIsOpenOrPreparedOnSite,
-                hasFood: current.hasFood || foodIsOpenOrPreparedOnSite
               }))
             }
           />
@@ -283,7 +334,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 foodRequiresTemperatureControl,
-                hasFood: current.hasFood || foodRequiresTemperatureControl
               }))
             }
           />
@@ -294,7 +344,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 foodSampling,
-                hasFood: current.hasFood || foodSampling
               }))
             }
           />
@@ -305,7 +354,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 drinksWithIceOrGarnish,
-                hasFood: current.hasFood || drinksWithIceOrGarnish
               }))
             }
           />
@@ -315,7 +363,7 @@ export function IntakeForm({
             onChange={(commissaryOrBaseOfOperations) =>
               setValues((current) => ({
                 ...current,
-                commissaryOrBaseOfOperations
+                commissaryOrBaseOfOperations,
               }))
             }
           />
@@ -325,7 +373,7 @@ export function IntakeForm({
             onChange={(believesFoodExemptionMayApply) =>
               setValues((current) => ({
                 ...current,
-                believesFoodExemptionMayApply
+                believesFoodExemptionMayApply,
               }))
             }
           />
@@ -339,14 +387,10 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasAlcohol}
+            checked={values.hasAlcohol === true}
             label="Alcohol is involved"
             onChange={(hasAlcohol) =>
-              setValues((current) => ({
-                ...current,
-                hasAlcohol,
-                alcoholPresent: hasAlcohol
-              }))
+              setValues((current) => ({ ...current, hasAlcohol }))
             }
           />
           <Toggle
@@ -356,8 +400,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 alcoholSold,
-                hasAlcohol: current.hasAlcohol || alcoholSold,
-                alcoholPresent: current.alcoholPresent || alcoholSold
               }))
             }
           />
@@ -368,20 +410,16 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 alcoholServedFree,
-                hasAlcohol: current.hasAlcohol || alcoholServedFree,
-                alcoholPresent: current.alcoholPresent || alcoholServedFree
               }))
             }
           />
           <Toggle
             checked={values.alcoholByob === true}
-            label="BYOB may be allowed"
+            label="Guests may bring their own alcohol (BYOB)"
             onChange={(alcoholByob) =>
               setValues((current) => ({
                 ...current,
                 alcoholByob,
-                hasAlcohol: current.hasAlcohol || alcoholByob,
-                alcoholPresent: current.alcoholPresent || alcoholByob
               }))
             }
           />
@@ -392,8 +430,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 alcoholOnPublicProperty,
-                hasAlcohol: current.hasAlcohol || alcoholOnPublicProperty,
-                alcoholPresent: current.alcoholPresent || alcoholOnPublicProperty
               }))
             }
           />
@@ -407,21 +443,21 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasTemporaryStructure}
+            checked={values.hasTemporaryStructure === true}
             label="Temporary structure, tent, stage, or canopy"
             onChange={(hasTemporaryStructure) =>
               setValues((current) => ({ ...current, hasTemporaryStructure }))
             }
           />
           <Toggle
-            checked={values.hasGenerator}
+            checked={values.hasGenerator === true}
             label="Generator or temporary power"
             onChange={(hasGenerator) =>
               setValues((current) => ({ ...current, hasGenerator }))
             }
           />
           <Toggle
-            checked={values.hasOpenFlame}
+            checked={values.hasOpenFlame === true}
             label="Open flame, cooking flame, or heating element"
             onChange={(hasOpenFlame) =>
               setValues((current) => ({ ...current, hasOpenFlame }))
@@ -434,7 +470,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 tentOrCanopy,
-                hasTemporaryStructure: current.hasTemporaryStructure || tentOrCanopy
               }))
             }
           />
@@ -445,8 +480,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 temporaryStageOrPlatform,
-                hasTemporaryStructure:
-                  current.hasTemporaryStructure || temporaryStageOrPlatform
               }))
             }
           />
@@ -457,7 +490,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 cookingHeatSource,
-                hasOpenFlame: current.hasOpenFlame || cookingHeatSource
               }))
             }
           />
@@ -474,20 +506,20 @@ export function IntakeForm({
             onChange={(tentSizeRange) =>
               setValues((current) => ({
                 ...current,
-                tentSizeRange: tentSizeRange as TentSizeRange
+                tentSizeRange: tentSizeRange as TentSizeRange,
               }))
             }
             options={[
               { value: "none", label: "No tent or canopy" },
               {
                 value: "small-under-400-sq-ft",
-                label: "Small, under 400 square feet"
+                label: "Small, under 400 square feet",
               },
               {
                 value: "large-400-sq-ft-or-more",
-                label: "Large, 400 square feet or more"
+                label: "Large, 400 square feet or more",
               },
-              { value: "not-sure", label: "Not sure yet" }
+              { value: "not-sure", label: "Not sure yet" },
             ]}
             value={values.tentSizeRange ?? "none"}
           />
@@ -507,19 +539,10 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 propertyUse,
-                privateProperty:
-                  propertyUse === "private-property" ||
-                  propertyUse === "parking-lot" ||
-                  propertyUse === "licensed-venue",
-                publicProperty:
-                  propertyUse === "public-property" ||
-                  propertyUse === "park-or-plaza",
-                cityParkOrFacility: propertyUse === "park-or-plaza",
-                parkingLotUse: propertyUse === "parking-lot"
               }))
             }
             options={venueTypeOptions}
-            value={values.propertyUse}
+            value={values.propertyUse ?? ""}
           />
           <SelectField
             error={errors.indoorOrOutdoor}
@@ -527,24 +550,24 @@ export function IntakeForm({
             onChange={(indoorOrOutdoor) =>
               setValues((current) => ({
                 ...current,
-                indoorOrOutdoor: indoorOrOutdoor as IndoorOrOutdoor
+                indoorOrOutdoor: indoorOrOutdoor as IndoorOrOutdoor,
               }))
             }
             options={[
               { value: "indoor", label: "Indoor" },
               { value: "outdoor", label: "Outdoor" },
               { value: "both", label: "Both indoor and outdoor" },
-              { value: "not-sure", label: "Not sure yet" }
+              { value: "not-sure", label: "Not sure yet" },
             ]}
-            value={values.indoorOrOutdoor ?? "outdoor"}
+            value={values.indoorOrOutdoor ?? ""}
           />
           <Toggle
-            checked={values.hasStreetSidewalkOrParkingImpact}
+            checked={values.hasStreetSidewalkOrParkingImpact === true}
             label="Street, sidewalk, or parking impacts"
             onChange={(hasStreetSidewalkOrParkingImpact) =>
               setValues((current) => ({
                 ...current,
-                hasStreetSidewalkOrParkingImpact
+                hasStreetSidewalkOrParkingImpact,
               }))
             }
           />
@@ -555,7 +578,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 cityParkOrFacility,
-                publicProperty: current.publicProperty || cityParkOrFacility
               }))
             }
           />
@@ -579,7 +601,7 @@ export function IntakeForm({
             onChange={(venueOrPropertyOwnerPermission) =>
               setValues((current) => ({
                 ...current,
-                venueOrPropertyOwnerPermission
+                venueOrPropertyOwnerPermission,
               }))
             }
           />
@@ -590,8 +612,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 streetClosure,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || streetClosure
               }))
             }
           />
@@ -602,8 +622,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 sidewalkUseOrClosure,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || sidewalkUseOrClosure
               }))
             }
           />
@@ -614,8 +632,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 parkingLotUse,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || parkingLotUse
               }))
             }
           />
@@ -626,8 +642,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 parkingSpacesBlocked,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || parkingSpacesBlocked
               }))
             }
           />
@@ -638,8 +652,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 trafficControlNeeded,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || trafficControlNeeded
               }))
             }
           />
@@ -650,8 +662,6 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 rightOfWayUse,
-                hasStreetSidewalkOrParkingImpact:
-                  current.hasStreetSidewalkOrParkingImpact || rightOfWayUse
               }))
             }
           />
@@ -665,7 +675,7 @@ export function IntakeForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Toggle
-            checked={values.hasAmplifiedSound}
+            checked={values.hasAmplifiedSound === true}
             label="Amplified sound or performance audio"
             onChange={(hasAmplifiedSound) =>
               setValues((current) => ({ ...current, hasAmplifiedSound }))
@@ -721,11 +731,11 @@ export function IntakeForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  eventDate: event.target.value
+                  eventDate: event.target.value,
                 }))
               }
               type="date"
-              value={values.eventDate}
+              value={values.eventDate ?? ""}
             />
           </Field>
           <SelectField
@@ -735,18 +745,18 @@ export function IntakeForm({
               setValues((current) => ({
                 ...current,
                 recurrence,
-                recurringEvent: recurrence === "recurring"
+                recurringEvent: recurrence === "recurring",
               }))
             }
             options={recurrenceOptions}
-            value={values.recurrence}
+            value={values.recurrence ?? ""}
           />
         </div>
       </Section>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="civic-intake-form__submit">
         <button
-          className="local-button focus-ring w-full bg-[var(--primary)] text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="civic-button civic-button--signal focus-ring"
           disabled={isSubmitting}
           type="submit"
         >
@@ -756,13 +766,16 @@ export function IntakeForm({
               className="h-4 w-4 animate-spin rounded-full border-2 border-white/45 border-t-white"
             />
           ) : null}
-          {isSubmitting ? "Building your readiness summary..." : "Build my readiness summary"}
-          <ArrowRight className="h-4 w-4" />
+          {isSubmitting
+            ? "Building your readiness summary..."
+            : "Build my readiness summary"}
+          <ArrowRight aria-hidden="true" />
         </button>
         <button
-          className="focus-ring min-h-[44px] rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
+          className="civic-intake-action civic-intake-action--quiet focus-ring"
           onClick={() => {
-            setValues(initialValues ?? defaultIntakeValues);
+            setStoredValues(initialValues ?? defaultIntakeValues);
+            touchedFieldsRef.current.clear();
             setErrors({});
             setSubmitError("");
           }}
@@ -771,11 +784,7 @@ export function IntakeForm({
           Reset form
         </button>
       </div>
-      <p
-        aria-live="polite"
-        className="text-center text-sm leading-6 text-[var(--muted)]"
-        role="status"
-      >
+      <p aria-live="polite" className="civic-intake-live-status" role="status">
         {isSubmitting
           ? "Saving your details and matching pilot guidance. This usually takes a moment."
           : "You can review the result before taking any next step."}
@@ -789,7 +798,7 @@ function SelectField({
   label,
   onChange,
   options,
-  value
+  value,
 }: {
   error?: string;
   label: string;
@@ -804,6 +813,11 @@ function SelectField({
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
+        {value === "" ? (
+          <option disabled value="">
+            Choose an answer
+          </option>
+        ) : null}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -818,28 +832,45 @@ function Field({
   children,
   error,
   helper,
-  label
+  label,
 }: {
   children: React.ReactNode;
   error?: string;
   helper?: string;
   label: string;
 }) {
+  const fieldId = useId();
+  const helperId = helper ? `${fieldId}-helper` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const describedBy =
+    [helperId, errorId].filter(Boolean).join(" ") || undefined;
+  const control = isValidElement<{
+    id?: string;
+    "aria-describedby"?: string;
+    "aria-invalid"?: boolean;
+  }>(children)
+    ? cloneElement(children, {
+        id: children.props.id ?? fieldId,
+        "aria-describedby": describedBy,
+        "aria-invalid": error ? true : undefined,
+      })
+    : children;
+
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold">{label}</span>
+    <div className="civic-intake-field">
+      <label htmlFor={fieldId}>{label}</label>
       {helper ? (
-        <span className="mb-2 block text-xs leading-5 text-[var(--muted)]">
+        <span className="civic-intake-field__helper" id={helperId}>
           {helper}
         </span>
       ) : null}
-      {children}
+      {control}
       {error ? (
-        <span className="mt-1.5 block text-sm leading-5 text-[var(--accent)]">
+        <span className="civic-intake-field__error" id={errorId} role="alert">
           {error}
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 
@@ -847,88 +878,77 @@ function Section({
   children,
   description,
   meta,
-  title
+  title,
 }: {
   children: React.ReactNode;
   description: string;
   meta?: string;
   title: string;
 }) {
-  const iconName = sectionIconName(title);
+  const marker = sectionMarker(title);
 
   return (
-    <fieldset className="local-card border-l-4 border-l-[var(--primary)] p-4">
-      <legend className="px-1">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--navy)] px-3 py-1 text-sm font-bold text-white">
-          <EventLocalIcon className="h-4 w-4 text-[var(--primary)]" name={iconName} />
-          {title}
+    <fieldset className="civic-intake-form-section">
+      <legend>
+        <span className="civic-intake-form-section__marker" aria-hidden="true">
+          {marker}
         </span>
+        <span>{title}</span>
       </legend>
-      <div className="mb-3 mt-2 flex flex-wrap items-start justify-between gap-2">
-        <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-          {description}
-        </p>
-        {meta ? (
-          <span className="rounded-full bg-[var(--primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--primary-strong)]">
-            {meta}
-          </span>
-        ) : null}
+      <div className="civic-intake-form-section__intro">
+        <p>{description}</p>
+        {meta ? <span>{meta}</span> : null}
       </div>
       {children}
     </fieldset>
   );
 }
 
-function sectionIconName(title: string): EventLocalIconName {
-  const icons: Record<string, EventLocalIconName> = {
-    Alcohol: "alcohol",
-    "Event basics": "basics",
-    "Food and drinks": "food",
-    Location: "city",
-    "Property and public space": "property",
-    "Selling and vendors": "booth",
-    "Sound, signs, and promotion": "sound",
-    "Structures, fire, and power": "tent",
-    Timing: "calendar"
+function sectionMarker(title: string) {
+  const markers: Record<string, string> = {
+    Location: "01",
+    "Event basics": "02",
+    "Selling and vendors": "03",
+    "Food and drinks": "04",
+    Alcohol: "05",
+    "Structures, fire, and power": "06",
+    "Property and public space": "07",
+    "Sound, signs, and promotion": "08",
+    Timing: "09",
   };
 
-  return icons[title] ?? "check";
+  return markers[title] ?? "--";
 }
 
 function Toggle({
   checked,
   label,
-  onChange
+  onChange,
 }: {
   checked: boolean;
   label: string;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-14 items-center justify-between gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
-      <span className="text-sm leading-5">{label}</span>
-      <button
-        aria-pressed={checked}
-        className={`focus-ring relative h-7 w-12 shrink-0 rounded-full transition ${
-          checked ? "bg-[var(--secondary)]" : "bg-[var(--line-strong)]"
-        }`}
-        onClick={() => onChange(!checked)}
-        type="button"
-      >
-        <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
-            checked ? "left-6" : "left-1"
-          }`}
-        />
-      </button>
-    </label>
+    <button
+      aria-pressed={checked}
+      className={`civic-intake-toggle focus-ring ${checked ? "civic-intake-toggle--active" : ""}`}
+      onClick={() => onChange(!checked)}
+      type="button"
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" className="civic-intake-toggle__state">
+        <span />
+        {checked ? "Yes" : "No"}
+      </span>
+    </button>
   );
 }
 
 function formatErrors(fieldErrors: Record<string, string[] | undefined>) {
   return Object.fromEntries(
     Object.entries(fieldErrors).flatMap(([key, messages]) =>
-      messages?.[0] ? [[key, messages[0]]] : []
-    )
+      messages?.[0] ? [[key, messages[0]]] : [],
+    ),
   );
 }

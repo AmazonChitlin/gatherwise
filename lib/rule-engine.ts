@@ -211,6 +211,10 @@ export async function buildChecklistForIntake(intake: IntakeInput) {
 export async function buildEvidenceChecklistForEventFacts(
   document: EventFactsDocument
 ) {
+  if (!document.jurisdiction.supported) {
+    return [];
+  }
+
   const rules = await loadActiveRuleRecords();
   return matchRulesToEventFacts(document, rules);
 }
@@ -234,6 +238,10 @@ export function matchRulesToEventFacts(
   document: EventFactsDocument,
   rules: EngineRuleRecord[]
 ) {
+  if (!document.jurisdiction.supported) {
+    return [];
+  }
+
   const facts = eventFactsToRuleEngineFacts(document);
   const evaluationTimestamp = new Date().toISOString();
 
@@ -863,7 +871,7 @@ function pushMinCondition(
   checks: EvaluatedEvidenceCondition[],
   triggerKey: keyof RuleTriggerFields,
   expected: number | undefined,
-  actual: number,
+  actual: number | null,
   factKeys: EventFactFieldKey[]
 ) {
   if (expected === undefined || !knownTriggerKeys.has(triggerKey)) {
@@ -874,7 +882,7 @@ function pushMinCondition(
     label: conditionLabel(triggerKey, factKeys),
     triggerKey,
     expected: `${expected}+`,
-    actual: String(actual),
+    actual: actual === null ? "Unknown" : String(actual),
     status: minIfPresent(expected, actual) ? "matched" : "failed",
     factKeys
   };
@@ -886,7 +894,7 @@ function pushMaxCondition(
   checks: EvaluatedEvidenceCondition[],
   triggerKey: keyof RuleTriggerFields,
   expected: number | undefined,
-  actual: number,
+  actual: number | null,
   factKeys: EventFactFieldKey[]
 ) {
   if (expected === undefined || !knownTriggerKeys.has(triggerKey)) {
@@ -897,7 +905,7 @@ function pushMaxCondition(
     label: conditionLabel(triggerKey, factKeys),
     triggerKey,
     expected: `${expected} or fewer`,
-    actual: String(actual),
+    actual: actual === null ? "Unknown" : String(actual),
     status: maxIfPresent(expected, actual) ? "matched" : "failed",
     factKeys
   };
@@ -912,7 +920,12 @@ function allFactsUnknown(document: EventFactsDocument, factKeys: EventFactFieldK
 
   return factKeys.every((key) => {
     const fact = factForKey(document, key);
-    return !fact || fact.status === "unknown" || fact.value === null;
+    return (
+      !fact ||
+      fact.status === "unknown" ||
+      fact.status === "extracted" ||
+      fact.value === null
+    );
   });
 }
 
@@ -1044,12 +1057,12 @@ function booleanIfPresent(expected: boolean | undefined, value: boolean) {
   return expected === undefined || expected === value;
 }
 
-function minIfPresent(minimum: number | undefined, value: number) {
-  return minimum === undefined || value >= minimum;
+function minIfPresent(minimum: number | undefined, value: number | null) {
+  return minimum === undefined || (value !== null && value >= minimum);
 }
 
-function maxIfPresent(maximum: number | undefined, value: number) {
-  return maximum === undefined || value <= maximum;
+function maxIfPresent(maximum: number | undefined, value: number | null) {
+  return maximum === undefined || (value !== null && value <= maximum);
 }
 
 function normalizeRequirementLevel(value: string): RequirementLevel {

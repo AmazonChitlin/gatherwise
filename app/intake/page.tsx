@@ -1,121 +1,111 @@
 import type { Metadata } from "next";
+import { ArrowUpRight, Landmark, Route } from "lucide-react";
+import { CivicStatus } from "@/components/civic";
 import { IntakeExperience } from "@/components/intake-experience";
-import { DisclaimerNotice } from "@/components/disclaimer-notice";
-import { Badge, Card, PageContainer } from "@/components/ui";
 import {
   getDemoScenario,
   getDemoDescribeHref,
   getDemoGuidedHref,
-  listDemoScenarios
+  listDemoScenarios,
 } from "@/lib/demo-scenarios";
 
 export const metadata: Metadata = {
   title: "Plan an Event",
   description:
-    "Choose a starting path for the Gatherwise Arizona pilot and use the guided form to build a source-backed readiness summary."
+    "Choose a starting path for the Gatherwise Arizona pilot and use the guided form to build a source-backed readiness summary.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function IntakePage({
-  searchParams
+  searchParams,
 }: {
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const selectedPath = getParam(params.path) === "describe" ? "describe" : "guided";
+  const selectedPath =
+    getParam(params.path) === "describe" ? "describe" : "guided";
   const demo = getDemoScenario(getParam(params.demo));
+  const guidedDemos = listDemoScenarios()
+    .filter((scenario) => scenario.featuredPath === "guided")
+    .slice(0, 3);
 
   return (
-    <main className="min-h-screen">
-      <PageContainer>
-        <section className="command-pattern rounded-[28px] bg-[var(--navy)] p-6 text-white shadow-[var(--shadow)] lg:p-8">
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
-            <div>
-              <Badge tone="highlight">Plan an event</Badge>
-              <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight tracking-[-0.04em] sm:text-5xl">
-                Choose a starting path.
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                Start with a description review or use the guided form. Both
-                paths lead to a source-backed readiness summary, and the manual
-                path stays available the whole way through.
-              </p>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/8 p-4 text-sm leading-6 text-slate-300">
-              What you can do now: pick a path, enter the details you know, and
-              build a readiness summary that points back to official sources.
-            </div>
+    <main className="civic-intake-page">
+      <section aria-labelledby="intake-title" className="civic-intake-intro">
+        <div className="civic-intake-intro__inner">
+          <div>
+            <p className="civic-section-label">Plan an event</p>
+            <h1 id="intake-title">
+              Turn the details you know into a readiness route.
+            </h1>
           </div>
-        </section>
+          <p>
+            Describe the event or answer step-by-step questions. Both paths
+            preserve unknown details and lead to the same source-backed result.
+            The manual path stays available throughout.
+          </p>
+          <CivicStatus tone="source">Arizona pilot</CivicStatus>
+        </div>
+      </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-6">
-            <IntakeExperience
-              demoTitle={demo?.title}
-              initialPath={selectedPath}
-              prefilledValues={demo?.featuredPath === "guided" ? demo.intake : undefined}
-            />
-          </div>
+      <div className="civic-intake-layout">
+        <div className="civic-intake-layout__workspace">
+          <IntakeExperience
+            demoTitle={demo?.title}
+            initialPath={selectedPath}
+            prefilledValues={
+              demo?.featuredPath === "guided" ? demo.intake : undefined
+            }
+          />
+        </div>
 
-          <aside className="space-y-4">
-            <DisclaimerNotice />
-            <Card className="border-[var(--primary)] p-4">
-              <Badge tone="highlight">Public demo scenarios</Badge>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                One-click fictional samples let recruiters and test participants
-                explore the guided flow without login, AI, or permanent storage.
-              </p>
-              <div className="mt-4 space-y-3">
-                {listDemoScenarios()
-                  .filter((scenario) => scenario.featuredPath === "guided")
-                  .slice(0, 3)
-                  .map((scenario) => (
-                    <div
-                      className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3"
-                      key={scenario.slug}
-                    >
-                      <p className="text-sm font-semibold">{scenario.title}</p>
-                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                        {scenario.summary}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <a
-                          className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white no-underline"
-                          href={getDemoGuidedHref(scenario)}
-                        >
-                          Open guided sample
-                        </a>
-                        <a
-                          className="focus-ring inline-flex min-h-[44px] items-center rounded-[var(--radius-control)] border border-[var(--line)] px-3 py-2 text-sm font-semibold no-underline"
-                          href={getDemoDescribeHref(scenario)}
-                        >
-                          Start describe path
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </Card>
-            <Card className="p-4">
-              <h2 className="text-base font-bold">What information is needed</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Start with location, event type, venue, attendance, and vendor
-                count. Add food, alcohol, sound, structures, traffic, and
-                signage details if they apply.
-              </p>
-            </Card>
-            <Card className="border-[var(--primary)] p-4">
-              <h2 className="text-base font-bold">What the result means</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Results show what may apply, what needs review, and where to
-                check the official source. Missing details may change your
-                results.
-              </p>
-            </Card>
-          </aside>
-        </section>
-      </PageContainer>
+        <aside aria-label="Planning notes" className="civic-intake-rail">
+          <section className="civic-intake-rail__section">
+            <Landmark aria-hidden="true" />
+            <p className="civic-data-label-shared">Pilot boundary</p>
+            <h2>Arizona guidance, with limits shown.</h2>
+            <p>
+              Gatherwise provides general information, not legal advice, and
+              does not submit permits. Check official sources and confirm
+              deadlines, fees, and forms with the relevant agency.
+            </p>
+          </section>
+
+          <section className="civic-intake-rail__section">
+            <Route aria-hidden="true" />
+            <p className="civic-data-label-shared">What helps</p>
+            <h2>Start with the route-changing facts.</h2>
+            <p>
+              Location, event type, property, attendance, vendors, food,
+              alcohol, sound, structures, and public-space impacts.
+            </p>
+          </section>
+
+          <details className="civic-intake-demos">
+            <summary>Public demo scenarios</summary>
+            <p>
+              No login, live AI, or permanent storage is needed to explore these
+              sample routes.
+            </p>
+            <div className="civic-intake-demos__list">
+              {guidedDemos.map((scenario) => (
+                <article key={scenario.slug}>
+                  <h3>{scenario.title}</h3>
+                  <p>{scenario.summary}</p>
+                  <div>
+                    <a href={getDemoGuidedHref(scenario)}>
+                      Open guided sample
+                      <ArrowUpRight aria-hidden="true" />
+                    </a>
+                    <a href={getDemoDescribeHref(scenario)}>Describe path</a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </details>
+        </aside>
+      </div>
     </main>
   );
 }

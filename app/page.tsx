@@ -18,7 +18,8 @@ import {
 export const metadata: Metadata = {
   title: "Event readiness with an evidence trail",
   description:
-    "Describe an Arizona event, review the facts that matter, and follow a source-backed route to the next planning step."
+    "Describe an Arizona event, review the facts that matter, and follow a source-backed route to the next planning step.",
+  alternates: { canonical: "/" }
 };
 
 const routeSteps = [
@@ -287,7 +288,7 @@ function HeroProductRoute() {
       <div className="civic-product-panel civic-product-panel--description">
         <p className="civic-data-label">Event idea / User-provided</p>
         <p>Saturday punk show in a private Phoenix parking lot for about 300 people...</p>
-        <span>1,284 / 2,500 characters</span>
+        <span>1,284 / 4,000 characters</span>
       </div>
 
       <div className="civic-product-route" aria-hidden="true">
@@ -303,9 +304,9 @@ function HeroProductRoute() {
           <span>Extracted facts</span>
           <strong>7 to review</strong>
         </div>
-        <FactRow label="Phoenix" status="Confirmed" />
-        <FactRow label="300 people" status="Confirmed" />
-        <FactRow label="Amplified sound" status="Confirmed" />
+        <FactRow label="Phoenix" status="Needs review" />
+        <FactRow label="300 people" status="Needs review" />
+        <FactRow label="Amplified sound" status="Needs review" />
         <FactRow label="Property access" status="Unknown" unknown />
       </div>
 

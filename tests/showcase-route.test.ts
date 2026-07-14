@@ -4,47 +4,63 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const showcase = read("app", "showcase", "page.tsx");
-const globalsCss = read("app", "globals.css");
+const styles = read("styles", "civic-signal.css");
 
-test("showcase route includes recruiter story sections in the expected order", () => {
-  const expectedSections = [
-    "The tangled problem",
-    "The hybrid system",
-    "Signature experience",
-    "Evidence and transparency",
-    "Technical proof",
-    "Evaluation",
+test("showcase presents the recruiter case study in a factual sequence", () => {
+  for (const label of [
+    "The problem",
+    "Who it helps",
+    "Product approach",
+    "Hybrid architecture",
+    "Evaluation methodology",
+    "Technical stack",
     "Builder contribution",
-    "Limitations"
-  ];
-
-  for (const label of expectedSections) {
+    "Public demos",
+    "Limitations",
+  ]) {
     assert.match(showcase, new RegExp(label));
   }
 });
 
-test("showcase hero contains the required recruiter entry points", () => {
-  assert.match(showcase, /Gatherwise/);
-  assert.match(showcase, /Ready\. Set\. Local\./);
-  assert.match(showcase, /Arizona pilot/);
+test("showcase contains required entry points and intended public links", () => {
   assert.match(showcase, /Try the readiness demo/);
   assert.match(showcase, /See the architecture/);
+  assert.match(showcase, /href="\/intake\?path=describe"/);
+  assert.match(showcase, /https:\/\/github\.com\/AmazonChitlin\/gatherwise/);
+  assert.match(showcase, /getDemoResultsHref/);
 });
 
-test("showcase makes the AI boundary explicit without claiming live AI behavior", () => {
-  assert.match(showcase, /AI extracts event facts/);
-  assert.match(showcase, /Verified rules evaluate those facts/);
-  assert.match(showcase, /AI explains the verified result/);
-  assert.match(showcase, /Planned boundary/);
-  assert.match(showcase, /Live today/);
+test("showcase states the implemented AI and deterministic boundary accurately", () => {
+  assert.match(showcase, /server-only AI provider/);
+  assert.match(showcase, /Human confirmation/);
+  assert.match(showcase, /Deterministic evaluation/);
+  assert.match(showcase, /AI never selects requirements/);
+  assert.match(showcase, /deterministic\s+fallbacks/);
+  assert.doesNotMatch(
+    showcase,
+    /still planned|Planned boundary|not live behavior/,
+  );
 });
 
-test("showcase route uses local-signal route helpers and remains accessible", () => {
-  assert.match(showcase, /id="architecture"/);
-  assert.match(showcase, /aria-label="Try the readiness demo"/);
-  assert.match(showcase, /aria-label="See the architecture section"/);
-  assert.match(globalsCss, /\.gw-showcase-route-line/);
-  assert.match(globalsCss, /\.gw-showcase-route-stop/);
+test("showcase uses verified evaluation methodology without invented metrics", () => {
+  assert.match(showcase, /36 synthetic scenarios/);
+  assert.match(showcase, /Usability findings\s+remain separate/);
+  assert.doesNotMatch(
+    showcase,
+    /customers|adoption|approved events|success rate/i,
+  );
+  assert.doesNotMatch(showcase, /261 tests/);
+});
+
+test("showcase has Civic Signal visual and responsive contracts", () => {
+  assert.match(showcase, /civic-case-interface/);
+  assert.match(showcase, /civic-architecture-diagram/);
+  assert.match(styles, /\.civic-case-hero/);
+  assert.match(
+    styles,
+    /@media \(max-width: 480px\)[\s\S]*civic-case-interface/,
+  );
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*civic-case-route/);
 });
 
 function read(...parts: string[]) {

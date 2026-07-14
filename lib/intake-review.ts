@@ -9,7 +9,6 @@ import {
   venueTypeOptions
 } from "@/lib/config";
 import { type EventExtractionResult } from "@/lib/ai/extraction";
-import { defaultIntakeValues } from "@/lib/intake-defaults";
 import {
   eventFactFieldKeys,
   eventFactGroups,
@@ -95,17 +94,7 @@ export function groupReviewFacts(facts: ReviewFact[]) {
 }
 
 export function reviewFactsToIntakeValues(facts: ReviewFact[]) {
-  const values = { ...defaultIntakeValues };
-
-  for (const fact of facts) {
-    if (fact.reviewStatus === "unknown" || fact.value === null) {
-      continue;
-    }
-
-    values[fact.key] = fact.value as never;
-  }
-
-  return values;
+  return reviewFactsToPartialValues(facts);
 }
 
 export function reviewFactsToPartialValues(facts: ReviewFact[]) {

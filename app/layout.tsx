@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Manrope, Newsreader } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
+import "@/styles/civic-signal.css";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -17,7 +19,7 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://gatherwise.local"),
+  metadataBase: getSiteUrl(),
   title: {
     default: "Gatherwise | Ready. Set. Local.",
     template: "%s | Gatherwise"
@@ -29,10 +31,11 @@ export const metadata: Metadata = {
     description:
       "AI-powered event readiness for organizers, vendors, and venues in the Arizona pilot.",
     siteName: "Gatherwise",
+    url: "/",
     type: "website"
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Gatherwise | Ready. Set. Local.",
     description:
       "AI-powered event readiness for organizers, vendors, and venues in the Arizona pilot."
@@ -45,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html data-scroll-behavior="smooth" lang="en">
       <body className={`${manrope.variable} ${newsreader.variable}`}>
         <a className="gw-skip-link" href="#main-content">
           Skip to main content

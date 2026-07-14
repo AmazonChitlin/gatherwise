@@ -15,7 +15,8 @@ const readme = read("README.md");
 
 test("uses the Gatherwise brand and updated top-level navigation", () => {
   assert.match(header, /Gatherwise/);
-  assert.match(header, /Plan an event/);
+  assert.doesNotMatch(header, /Plan an event/);
+  assert.match(header, /Start a route/);
   assert.match(header, /How it works/);
   assert.match(header, /Sources/);
   assert.match(header, /About/);

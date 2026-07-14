@@ -180,3 +180,5 @@ export const intakeSchema = z.object({
 });
 
 export type IntakeInput = z.infer<typeof intakeSchema>;
+export const partialIntakeSchema = intakeSchema.partial();
+export type PartialIntakeInput = z.infer<typeof partialIntakeSchema>;

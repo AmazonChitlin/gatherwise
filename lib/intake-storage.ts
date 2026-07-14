@@ -1,11 +1,11 @@
 import { Buffer } from "node:buffer";
 import {
-  intakeToEventFacts,
   parseStoredIntakePayload,
   serializeStoredIntakePayload,
+  type EventFactsDocument,
   type StoredIntakePayload
 } from "@/lib/event-facts";
-import type { IntakeInput } from "@/lib/schemas";
+import type { PartialIntakeInput } from "@/lib/schemas";
 
 export const MAX_RESULTS_SNAPSHOT_BYTES = 12_000;
 
@@ -23,8 +23,11 @@ export function shouldPersistIntakeSubmissions() {
   return process.env.NODE_ENV !== "production";
 }
 
-export function createResultsSnapshot(intake: IntakeInput) {
-  const payload = serializeStoredIntakePayload(intake, intakeToEventFacts(intake));
+export function createResultsSnapshot(
+  intake: PartialIntakeInput,
+  eventFacts?: EventFactsDocument
+) {
+  const payload = serializeStoredIntakePayload(intake, eventFacts);
   const bytes = Buffer.byteLength(payload, "utf8");
 
   if (bytes > MAX_RESULTS_SNAPSHOT_BYTES) {

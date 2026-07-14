@@ -75,6 +75,19 @@ Notes:
 
 ## 3. Optional
 
+### `NEXT_PUBLIC_SITE_URL`
+
+- Purpose: public origin used for canonical, Open Graph, and Twitter metadata.
+- Server-only: no; this is a public build-time value and must never contain a secret.
+- Safe example: `https://gatherwise-production.up.railway.app`
+- Railway supplies it automatically: no
+- Deployment fails without it: no; local and test builds fall back to `http://localhost:3000`
+- Deterministic fallback works without it: yes
+
+Recommended Railway setting:
+
+- `https://gatherwise-production.up.railway.app`
+
 ### `PERSIST_INTAKE_SUBMISSIONS`
 
 - Purpose: controls whether validated intake submissions are stored in the database instead of staying stateless.
@@ -213,5 +226,6 @@ Recommended setting:
 ## Recommended Railway production values
 
 - Leave `DATABASE_URL` unset and let the startup script derive `file:${RAILWAY_VOLUME_MOUNT_PATH}/gatherwise.db`
+- Set `NEXT_PUBLIC_SITE_URL=https://gatherwise-production.up.railway.app`
 - Set `PERSIST_INTAKE_SUBMISSIONS=false`
 - Leave all AI flags off for the public Handshake deployment unless a live AI demo is intentionally enabled
