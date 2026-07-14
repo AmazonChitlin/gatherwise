@@ -162,3 +162,52 @@ npm run test:e2e
 ```
 
 Final verification on 2026-07-14: `npm test` passed 275 tests, `npm run test:e2e` passed 15 Chromium journeys, type checking passed, the production build passed, and the offline evaluation passed all 36 scenarios in dataset `2026-07-13.1`.
+
+## Civic Signal v2 release gate
+
+- Release date: 2026-07-14
+- Release candidate branch: `redesign/gatherwise-civic-signal-v2`
+- Release candidate commit: `49f7b29814034461ae1df03721858434686d1235`
+- Deployment branch: `showcase/gatherwise-handshake`
+- Planned release tag: `gatherwise-civic-signal-v2`
+- Startup script Git mode: `100755`
+
+### Final results
+
+| Gate | Result |
+| --- | --- |
+| `npm ci` | Passed; 93 packages audited, 0 vulnerabilities |
+| `npm test` | Passed; 275 tests, 0 failed |
+| `npm run typecheck` | Passed |
+| Production build | Passed with `NEXT_PUBLIC_SITE_URL=https://gatherwise-production.up.railway.app` |
+| `npm run eval:gatherwise` | Passed; 36 offline scenarios, dataset `2026-07-13.1` |
+| `npm run test:e2e` | Passed; 15 Chromium journeys, 0 failed |
+| Railway-style startup | Passed with fresh SQLite migrations, idempotent seed, `0.0.0.0` binding, and restart verification |
+| Required route smoke test | Passed; all nine required routes returned `200` |
+| Public demo smoke test | Passed; all six fictional result routes and all six guided sample routes returned `200` |
+| AI-disabled fallback | Passed; extraction returned the safe guided-form fallback without exposing configuration |
+
+The first fresh local `prisma migrate deploy` process exited with an unelaborated schema-engine error while the host had less than 1 GB free. An immediate isolated retry applied all three migrations, and two subsequent complete Railway startup runs migrated, seeded, started, and passed health checks. This was treated as a visible local environment limitation; it did not change migrations or deployment behavior.
+
+### Release audit
+
+- The working branch matched `origin/redesign/gatherwise-civic-signal-v2` before release documentation.
+- The complete 52-file diff against `origin/showcase/gatherwise-handshake` was reviewed.
+- No API key, authorization secret, private key, Railway secret, `.env` file, or private event data was found.
+- `.env.example` contains placeholders only.
+- Extraction logs contain bounded operational metadata, not raw event descriptions, prompts, responses, or request bodies.
+- No fake customer logos, adoption claims, approvals, or invented product metrics were added.
+- The showcase's 36-scenario, framework, database, AI-boundary, and builder-contribution claims match repository evidence.
+
+### Deployment checklist
+
+- [x] Confirm clean working branch and fresh remote refs.
+- [x] Confirm startup script mode `100755`.
+- [x] Review the complete deployment diff and release claims.
+- [x] Complete secret, privacy, logging, and fake-metric scans.
+- [x] Run clean install, unit tests, type checking, build, evaluation, and E2E tests.
+- [x] Run Railway-style SQLite migration, seed, startup, restart, health, route, demo, and fallback checks.
+- [x] Confirm production URL documentation uses `https://gatherwise-production.up.railway.app`.
+- [ ] Merge non-destructively into `showcase/gatherwise-handshake` and push.
+- [ ] Create and push annotated tag `gatherwise-civic-signal-v2` at the merge commit.
+- [ ] Wait for Railway deployment and verify health, core journeys, live AI, demos, shell, and browser console.
