@@ -3,6 +3,13 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
 import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
 import {
+  buildExplanationPacket,
+  buildDeterministicFallback,
+  createExplanationService,
+  createOpenAIExplanationProvider,
+  type ExplanationPacket
+} from "@/lib/ai/explanations";
+import {
   buildRequirementResultTrace,
   factStatusToUserFacingState,
   getFactMetadata,
@@ -99,6 +106,12 @@ export default async function ResultsPage({
   const sources = uniqueSources(requirementResults);
   const missingFacts = buildMissingFactRows(eventFacts, checklistItems);
   const nextAction = topItems[0] ?? null;
+  const explanationPacket = buildExplanationPacket({
+    eventFacts,
+    checklistItems,
+    requirementResults
+  });
+  const explanation = await generateExplanation(explanationPacket);
 
   return (
     <main className="min-h-screen">
@@ -265,6 +278,53 @@ export default async function ResultsPage({
                   >
                     {item}
                   </div>
+                ))}
+              </div>
+            </Card>
+          </section>
+
+          <section aria-labelledby="grounded-explanation">
+            <Card className="p-5">
+              <Badge tone="highlight">
+                {explanation.mode === "ai" ? "Grounded AI explanation" : "Deterministic fallback"}
+              </Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="grounded-explanation"
+              >
+                {explanation.title}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                {explanation.summary}
+              </p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <TrailPanel title="What we know">
+                  <ul className="space-y-2 text-sm leading-6">
+                    {explanation.whatWeKnow.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </TrailPanel>
+                <TrailPanel title="What needs review">
+                  <ul className="space-y-2 text-sm leading-6">
+                    {explanation.needsReview.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </TrailPanel>
+                <TrailPanel title="Next steps">
+                  <ul className="space-y-2 text-sm leading-6">
+                    {explanation.nextSteps.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </TrailPanel>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {explanation.citations.map((citation) => (
+                  <Badge key={citation} tone="neutral">
+                    Source ID: {citation}
+                  </Badge>
                 ))}
               </div>
             </Card>
@@ -581,6 +641,25 @@ function normalizeResultsEventFacts(
       status: fact.status === "provided" ? "confirmed" : fact.status
     }))
   });
+}
+
+async function generateExplanation(packet: ExplanationPacket) {
+  if (process.env.GATHERWISE_AI_EXPLANATION_ENABLED !== "true") {
+    return buildDeterministicFallback(packet, "AI explanation is disabled for this demo.");
+  }
+
+  try {
+    const service = createExplanationService({
+      provider: createOpenAIExplanationProvider()
+    });
+
+    return await service.explain(packet);
+  } catch (error) {
+    return buildDeterministicFallback(
+      packet,
+      error instanceof Error ? error.message : "AI explanation is unavailable."
+    );
+  }
 }
 
 function buildMissingFactRows(

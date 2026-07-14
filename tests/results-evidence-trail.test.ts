@@ -11,6 +11,7 @@ test("results route uses the Gatherwise evidence hierarchy in order", () => {
     "Possible requirements",
     "Missing information",
     "Planning order",
+    "Grounded AI explanation",
     "Evidence Trail",
     "Full official sources",
     "Limitations"
@@ -35,6 +36,14 @@ test("results route uses the prompt-approved status language", () => {
   assert.match(results, /Information missing/);
   assert.match(results, /Source needs review/);
   assert.match(results, /Not supported/);
+});
+
+test("results route keeps the explanation accessible and source-grounded", () => {
+  assert.match(results, /id="grounded-explanation"/);
+  assert.match(results, /What we know/);
+  assert.match(results, /What needs review/);
+  assert.match(results, /Next steps/);
+  assert.match(results, /Source ID:/);
 });
 
 function read(...parts: string[]) {
