@@ -1,0 +1,139 @@
+{
+  "generatedAt": "2026-07-14T01:57:55.690Z",
+  "commitSha": "943bfb7",
+  "workingTreeClean": false,
+  "mode": "offline",
+  "datasetVersion": "2026-07-13.1",
+  "scenarioCount": 36,
+  "modelConfiguration": {
+    "extractionProvider": "mock-fixture",
+    "extractionModel": "fixture-normalization",
+    "explanationProvider": "mock-audit",
+    "explanationModel": "validator-and-red-team",
+    "liveMode": false
+  },
+  "coverage": {
+    "supportedJurisdictionsCovered": [
+      "phoenix",
+      "tempe",
+      "mesa",
+      "scottsdale",
+      "glendale",
+      "peoria",
+      "chandler",
+      "gilbert",
+      "maricopa-county",
+      "arizona-state",
+      "arizona-tpt"
+    ],
+    "tags": {
+      "public-property": 23,
+      "private-property": 12,
+      "attendance-boundary": 22,
+      "food-truck": 13,
+      "on-site-food-prep": 12,
+      "prepackaged-food": 11,
+      "alcohol": 3,
+      "amplified-sound": 12,
+      "tent": 22,
+      "canopy": 22,
+      "stage": 12,
+      "right-of-way-use": 12,
+      "traffic-control": 12,
+      "missing-details": 17,
+      "contradiction": 4,
+      "unsupported-geography": 1,
+      "prompt-injection": 1,
+      "ambiguous-quantity": 4,
+      "ambiguous-date": 7
+    }
+  },
+  "extraction": {
+    "assertedFields": 1944,
+    "exactMatches": 1941,
+    "accuracy": 0.9984567901234568,
+    "expectedUnknowns": 28,
+    "unknownMatches": 28,
+    "unsupportedInferenceCount": 0,
+    "falseVsUnknownErrors": 2,
+    "contradictionScenarios": 4,
+    "contradictionHandled": 4,
+    "failures": []
+  },
+  "ruleConsistency": {
+    "scenariosChecked": 35,
+    "ruleIdAgreement": 1,
+    "sourceIdAgreement": 1,
+    "boundaryAgreement": 1,
+    "failures": []
+  },
+  "grounding": {
+    "cases": 5,
+    "validatedCases": 1,
+    "citationFailureRejected": true,
+    "unsupportedSourceIdsDetected": 1,
+    "addedAgencyClaimsDetected": 1,
+    "addedDeadlineClaimsDetected": 1,
+    "addedThresholdClaimsDetected": 1,
+    "unsupportedRequirementClaimsDetected": 1,
+    "failures": []
+  },
+  "reliability": {
+    "checks": [
+      {
+        "id": "missing-key",
+        "passed": true,
+        "note": "Missing OpenAI API key is rejected before live extraction starts."
+      },
+      {
+        "id": "timeout",
+        "passed": true,
+        "note": "Extraction timeout returns a bounded failure."
+      },
+      {
+        "id": "provider-failure",
+        "passed": true,
+        "note": "Provider failures surface as operational errors."
+      },
+      {
+        "id": "malformed-response",
+        "passed": true,
+        "note": "Malformed extraction output is rejected."
+      },
+      {
+        "id": "citation-failure",
+        "passed": true,
+        "note": "Unknown citation IDs are rejected."
+      },
+      {
+        "id": "database-failure",
+        "passed": true,
+        "note": "Database-backed evaluation failures can be trapped and reported."
+      },
+      {
+        "id": "ai-disabled",
+        "passed": true,
+        "note": "AI-disabled mode falls back to deterministic copy."
+      }
+    ],
+    "passedCount": 7,
+    "failedCount": 0
+  },
+  "usability": {
+    "automatedMetricsIncluded": false,
+    "note": "Measured usability remains separate from this harness. See the five-participant research package and do not merge those observations into automated technical scores.",
+    "referenceDocs": [
+      "docs/gatherwise/usability-test-plan.md",
+      "docs/gatherwise/test-session-template.md",
+      "docs/gatherwise/research-debrief-template.md",
+      "docs/gatherwise/hypothesis-review.md"
+    ]
+  },
+  "failures": [],
+  "limitations": [
+    "Offline extraction metrics validate fixture-driven normalization and error handling, not live model quality.",
+    "Live evaluation is opt-in because it can incur API cost and depends on configured OpenAI credentials.",
+    "Grounding red-team checks combine runtime citation validation with harness-only narrative audits for unsupported agencies, deadlines, thresholds, and unsupported requirement claims.",
+    "Usability metrics are intentionally excluded from this automated report and must be gathered with real participants."
+  ]
+}

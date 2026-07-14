@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test": "tsx --test tests/**/*.test.ts",
+    "eval:gatherwise": "tsx scripts/eval-gatherwise.ts",
+    "eval:gatherwise:live": "tsx scripts/eval-gatherwise.ts --live",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
