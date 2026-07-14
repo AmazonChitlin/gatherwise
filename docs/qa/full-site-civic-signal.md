@@ -62,3 +62,12 @@ This baseline establishes a safe workspace for the full-site redesign. No applic
 - The guided form renders one retail-sales control and asks about BYOB as an event fact rather than implied permission.
 - Path-choice buttons expose selected state with `aria-pressed` and a visible selected treatment.
 - Verification: `npm test` passed 250 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.
+
+## Civic Signal foundation verification
+
+- Core tokens, resets, legacy aliases, and accessibility defaults remain in `app/globals.css`; shared Civic Signal styles now live in `styles/civic-signal.css` with the original homepage cascade preserved.
+- Shared semantic primitives cover page rhythm, sections, labels, actions, icon-plus-text statuses, route markers, notices, workspace panels, dividers, and empty states without requiring card layouts.
+- Manrope is assigned directly to body copy and inherited controls; Newsreader is reserved for editorial headings and monumental brand treatments.
+- The foundation uses solid ink, limestone, and paper surfaces with signal orange and cactus semantics, deliberate radii, visible focus rules, 44px controls, and reduced-motion fallbacks.
+- Visual checks passed at desktop and 320px with no horizontal overflow or browser-console errors.
+- Verification: `npm test` passed 253 tests, type checking and the production build passed, and the offline evaluation passed all 36 scenarios.

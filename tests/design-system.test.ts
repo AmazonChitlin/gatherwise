@@ -7,6 +7,14 @@ const globalsCss = readFileSync(
   join(process.cwd(), "app", "globals.css"),
   "utf8"
 );
+const civicCss = readFileSync(
+  join(process.cwd(), "styles", "civic-signal.css"),
+  "utf8"
+);
+const civicPrimitives = readFileSync(
+  join(process.cwd(), "components", "civic", "primitives.tsx"),
+  "utf8"
+);
 const layout = readFileSync(join(process.cwd(), "app", "layout.tsx"), "utf8");
 const home = readFileSync(join(process.cwd(), "app", "page.tsx"), "utf8");
 
@@ -83,8 +91,12 @@ test("loads the Civic Signal type system through next font", () => {
   assert.match(layout, /Manrope, Newsreader/);
   assert.match(layout, /--font-manrope/);
   assert.match(layout, /--font-newsreader/);
-  assert.match(globalsCss, /font-family:\s*var\(--font-manrope\)/);
-  assert.match(globalsCss, /font-family:\s*var\(--font-newsreader\)/);
+  assert.match(layout, /styles\/civic-signal\.css/);
+  assert.match(globalsCss, /--font-sans:\s*var\(--font-manrope\)/);
+  assert.match(globalsCss, /body\s*\{[\s\S]*font-family:\s*var\(--font-manrope\)/);
+  assert.match(civicCss, /\.civic-editorial-heading[\s\S]*font-family:\s*var\(--font-newsreader\)/);
+  assert.match(civicCss, /\.civic-status[\s\S]*font-family:\s*var\(--font-manrope\)/);
+  assert.match(globalsCss, /button,\s*\ninput,\s*\nselect,\s*\ntextarea\s*\{\s*font:\s*inherit/);
 });
 
 test("defines the Civic Signal palette, route motion, and reduced-motion fallback", () => {
@@ -101,9 +113,58 @@ test("defines the Civic Signal palette, route motion, and reduced-motion fallbac
     assert.match(globalsCss, new RegExp(`${escapeToken(token)}\\s*:`));
   }
 
-  assert.match(globalsCss, /@keyframes civic-route-draw/);
-  assert.match(globalsCss, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(globalsCss, /\.civic-product-route__line\s*\{\s*clip-path: none; opacity: 1;/);
+  assert.match(civicCss, /@keyframes civic-route-draw/);
+  assert.match(civicCss, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(civicCss, /\.civic-product-route__line\s*\{\s*clip-path: none; opacity: 1;/);
+});
+
+test("keeps Civic Signal styles layered outside core globals", () => {
+  assert.doesNotMatch(globalsCss, /\.civic-header\s*\{/);
+  assert.match(civicCss, /\.civic-header\s*\{/);
+  assert.match(civicCss, /\.civic-page-shell\s*\{/);
+  assert.match(civicCss, /\.civic-foundation-section\s*\{/);
+});
+
+test("preserves legacy aliases while exposing focused Civic geometry", () => {
+  for (const alias of [
+    "--background",
+    "--surface",
+    "--foreground",
+    "--muted",
+    "--line",
+    "--primary",
+    "--verified",
+    "--radius-card",
+    "--radius-control"
+  ]) {
+    assert.match(globalsCss, new RegExp(`${escapeToken(alias)}\\s*:`));
+  }
+
+  assert.match(globalsCss, /--civic-radius-control:\s*0\.375rem/);
+  assert.match(globalsCss, /--civic-radius-panel:\s*0\.625rem/);
+  assert.match(globalsCss, /--civic-focus-ring:\s*3px solid var\(--gw-focus\)/);
+  assert.match(globalsCss, /:where\(a, button, input, select, textarea, summary, \[tabindex\]\):focus-visible/);
+});
+
+test("defines non-color semantic statuses and shared Civic primitives", () => {
+  for (const tone of [
+    "verified",
+    "active",
+    "unknown",
+    "caution",
+    "critical",
+    "ai",
+    "source"
+  ]) {
+    assert.match(civicCss, new RegExp(`\\.civic-status--${tone}\\s*\\{`));
+  }
+
+  assert.match(civicCss, /\.civic-status svg/);
+  assert.match(civicPrimitives, /function CivicStatus/);
+  assert.match(civicPrimitives, /function CivicRouteMarker/);
+  assert.match(civicPrimitives, /function CivicNotice/);
+  assert.match(civicPrimitives, /function CivicWorkspacePanel/);
+  assert.match(civicPrimitives, /aria-hidden="true"/);
 });
 
 test("structures the public homepage as the Civic Signal route story", () => {
