@@ -193,6 +193,10 @@ test("builds a typed requirement result trace", () => {
     "vendorCount",
     "city"
   ]);
+  assert.deepEqual(result.ruleEvaluation.matchedConditions, []);
+  assert.deepEqual(result.ruleEvaluation.unknownConditions, []);
+  assert.deepEqual(result.ruleEvaluation.sourceIds, []);
+  assert.match(result.ruleEvaluation.evaluatedAt, /T/);
   assert.equal(result.officialSource.sourceName, "Phoenix Special Events");
 });
 

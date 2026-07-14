@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import {
   eventFactsToRuleEngineFacts,
+  getFactMetadata,
   intakeToEventFacts,
+  type EventFact,
+  type EventFactFieldKey,
+  type EventFactsDocument,
   type RuleTriggerFacts
 } from "@/lib/event-facts";
 import type { IntakeInput } from "@/lib/schemas";
@@ -11,6 +15,7 @@ import type {
   RequirementLevel,
   RuleTriggerFields
 } from "@/lib/types";
+import { officialSourceInventory } from "@/prisma/seed-data/source-inventory";
 
 export type EngineRuleRecord = {
   id: string;
@@ -37,6 +42,7 @@ export type EngineRuleRecord = {
   agencyEmail: string | null;
   agencyUrl: string | null;
   triggerFields: string;
+  updatedAt?: Date | null;
 };
 
 export type ChecklistItem = {
@@ -65,6 +71,36 @@ export type VerificationStatus =
   | "verified"
   | "needs_review"
   | "sample_placeholder";
+
+export type EvidenceConditionStatus = "matched" | "unknown";
+
+export type EvidenceCondition = {
+  label: string;
+  triggerKey: string;
+  expected: string;
+  actual: string;
+  status: EvidenceConditionStatus;
+  factKeys: EventFactFieldKey[];
+};
+
+type EvaluatedEvidenceCondition = {
+  label: string;
+  triggerKey: string;
+  expected: string;
+  actual: string;
+  status: EvidenceConditionStatus | "failed";
+  factKeys: EventFactFieldKey[];
+};
+
+export type EvidenceChecklistItem = ChecklistItem & {
+  sourceId: string | null;
+  ruleVersion: string;
+  jurisdictionCode: string | null;
+  relevantFactKeys: EventFactFieldKey[];
+  matchedConditions: EvidenceCondition[];
+  unknownConditions: EvidenceCondition[];
+  evaluationTimestamp: string;
+};
 
 const requirementRank: Record<RequirementLevel, number> = {
   "likely required": 0,
@@ -172,6 +208,13 @@ export async function buildChecklistForIntake(intake: IntakeInput) {
   return matchRulesToIntake(intake, rules);
 }
 
+export async function buildEvidenceChecklistForEventFacts(
+  document: EventFactsDocument
+) {
+  const rules = await loadActiveRuleRecords();
+  return matchRulesToEventFacts(document, rules);
+}
+
 export function matchRulesToIntake(
   intake: IntakeInput,
   rules: EngineRuleRecord[]
@@ -185,6 +228,19 @@ export function matchRulesToIntake(
     })
     .map(toChecklistItem)
     .sort(sortChecklistItems);
+}
+
+export function matchRulesToEventFacts(
+  document: EventFactsDocument,
+  rules: EngineRuleRecord[]
+) {
+  const facts = eventFactsToRuleEngineFacts(document);
+  const evaluationTimestamp = new Date().toISOString();
+
+  return rules
+    .map((rule) => evaluateRuleWithEvidence(rule, facts, document, evaluationTimestamp))
+    .filter((item): item is EvidenceChecklistItem => item !== null)
+    .sort(sortEvidenceChecklistItems);
 }
 
 export function triggerFieldsMatch(
@@ -336,6 +392,554 @@ export function triggerFieldsMatch(
   return checks.every(Boolean);
 }
 
+function evaluateRuleWithEvidence(
+  rule: EngineRuleRecord,
+  facts: RuleTriggerFacts,
+  document: EventFactsDocument,
+  evaluationTimestamp: string
+) {
+  const triggerFields = parseTriggerFields(rule);
+
+  if (!triggerFields) {
+    return null;
+  }
+
+  const conditions = buildEvidenceConditions(triggerFields, facts, document);
+  const hasMatchableTriggers = conditions.length > 0;
+
+  if (!hasMatchableTriggers && triggerFields.global !== true) {
+    return null;
+  }
+
+  if (conditions.some((condition) => condition.status === "failed")) {
+    return null;
+  }
+
+  const matchedConditions = conditions
+    .filter((condition) => condition.status === "matched")
+    .map(toEvidenceCondition);
+  const unknownConditions = conditions
+    .filter((condition) => condition.status === "unknown")
+    .map(toEvidenceCondition);
+  const relevantFactKeys = Array.from(
+    new Set(conditions.flatMap((condition) => condition.factKeys))
+  );
+
+  return {
+    ...toChecklistItem(rule),
+    sourceId: sourceIdForRuleRecord(rule),
+    ruleVersion: `rule-record:${(rule.updatedAt ?? new Date(0)).toISOString()}`,
+    jurisdictionCode: rule.jurisdictionCode ?? null,
+    relevantFactKeys:
+      relevantFactKeys.length > 0 ? relevantFactKeys : (["city"] satisfies EventFactFieldKey[]),
+    matchedConditions,
+    unknownConditions,
+    evaluationTimestamp
+  } satisfies EvidenceChecklistItem;
+}
+
+function buildEvidenceConditions(
+  triggerFields: RuleTriggerFields,
+  facts: RuleTriggerFacts,
+  document: EventFactsDocument
+) {
+  const checks: EvaluatedEvidenceCondition[] = [];
+
+  pushStringCondition(
+    checks,
+    "jurisdiction_code",
+    toList(triggerFields.jurisdiction_code, triggerFields.jurisdiction_codes),
+    facts.jurisdictionCode,
+    ["city"]
+  );
+  pushStringCondition(
+    checks,
+    "city",
+    toList(triggerFields.city, triggerFields.cities),
+    facts.city,
+    ["city"]
+  );
+  pushStringCondition(
+    checks,
+    "county",
+    toList(triggerFields.county, triggerFields.counties),
+    facts.county,
+    ["county"]
+  );
+  pushStringCondition(
+    checks,
+    "state",
+    toList(triggerFields.state, triggerFields.states),
+    facts.state,
+    ["city"]
+  );
+  pushStringCondition(
+    checks,
+    "event_type",
+    toList(triggerFields.event_type, triggerFields.event_types),
+    facts.eventType,
+    ["eventType"]
+  );
+  pushStringCondition(
+    checks,
+    "use_case",
+    toList(triggerFields.use_case, triggerFields.use_cases),
+    facts.useCase,
+    ["useCase"]
+  );
+  pushBooleanCondition(checks, "food_service", triggerFields.food_service, facts.foodService, [
+    "hasFood",
+    "foodIsPrepackaged",
+    "foodIsOpenOrPreparedOnSite",
+    "foodRequiresTemperatureControl",
+    "foodSampling",
+    "drinksWithIceOrGarnish"
+  ]);
+  pushBooleanCondition(checks, "food_truck", triggerFields.food_truck, facts.foodTruck, [
+    "hasFoodTruck",
+    "foodTruckOrMobileFoodUnit"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "food_is_prepackaged",
+    triggerFields.food_is_prepackaged,
+    facts.foodIsPrepackaged,
+    ["foodIsPrepackaged"]
+  );
+  pushBooleanCondition(
+    checks,
+    "food_is_open_or_prepared_on_site",
+    triggerFields.food_is_open_or_prepared_on_site,
+    facts.foodIsOpenOrPreparedOnSite,
+    ["foodIsOpenOrPreparedOnSite"]
+  );
+  pushBooleanCondition(
+    checks,
+    "food_requires_temperature_control",
+    triggerFields.food_requires_temperature_control,
+    facts.foodRequiresTemperatureControl,
+    ["foodRequiresTemperatureControl"]
+  );
+  pushBooleanCondition(checks, "food_sampling", triggerFields.food_sampling, facts.foodSampling, [
+    "foodSampling"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "drinks_with_ice_or_garnish",
+    triggerFields.drinks_with_ice_or_garnish,
+    facts.drinksWithIceOrGarnish,
+    ["drinksWithIceOrGarnish"]
+  );
+  pushBooleanCondition(
+    checks,
+    "food_truck_or_mobile_food_unit",
+    triggerFields.food_truck_or_mobile_food_unit,
+    facts.foodTruckOrMobileFoodUnit,
+    ["foodTruckOrMobileFoodUnit", "hasFoodTruck"]
+  );
+  pushBooleanCondition(
+    checks,
+    "commissary_or_base_of_operations",
+    triggerFields.commissary_or_base_of_operations,
+    facts.commissaryOrBaseOfOperations,
+    ["commissaryOrBaseOfOperations"]
+  );
+  pushBooleanCondition(
+    checks,
+    "believes_food_exemption_may_apply",
+    triggerFields.believes_food_exemption_may_apply,
+    facts.believesFoodExemptionMayApply,
+    ["believesFoodExemptionMayApply"]
+  );
+  pushBooleanCondition(checks, "retail_sales", triggerFields.retail_sales, facts.retailSales, [
+    "hasRetailSales"
+  ]);
+  pushBooleanCondition(checks, "alcohol", triggerFields.alcohol, facts.alcohol, [
+    "hasAlcohol",
+    "alcoholPresent",
+    "alcoholSold",
+    "alcoholServedFree",
+    "alcoholByob",
+    "alcoholOnPublicProperty"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "alcohol_present",
+    triggerFields.alcohol_present,
+    facts.alcoholPresent,
+    ["alcoholPresent", "hasAlcohol"]
+  );
+  pushBooleanCondition(checks, "alcohol_sold", triggerFields.alcohol_sold, facts.alcoholSold, [
+    "alcoholSold"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "alcohol_served_free",
+    triggerFields.alcohol_served_free,
+    facts.alcoholServedFree,
+    ["alcoholServedFree"]
+  );
+  pushBooleanCondition(checks, "alcohol_byob", triggerFields.alcohol_byob, facts.alcoholByob, [
+    "alcoholByob"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "alcohol_on_public_property",
+    triggerFields.alcohol_on_public_property,
+    facts.alcoholOnPublicProperty,
+    ["alcoholOnPublicProperty", "publicProperty", "cityParkOrFacility", "propertyUse"]
+  );
+  pushBooleanCondition(
+    checks,
+    "amplified_sound",
+    triggerFields.amplified_sound,
+    facts.amplifiedSound,
+    ["hasAmplifiedSound"]
+  );
+  pushBooleanCondition(
+    checks,
+    "public_property",
+    triggerFields.public_property,
+    facts.publicProperty,
+    ["publicProperty", "cityParkOrFacility", "propertyUse"]
+  );
+  pushBooleanCondition(
+    checks,
+    "private_property",
+    triggerFields.private_property,
+    facts.privateProperty,
+    ["privateProperty", "propertyUse"]
+  );
+  pushBooleanCondition(
+    checks,
+    "city_park_or_facility",
+    triggerFields.city_park_or_facility,
+    facts.cityParkOrFacility,
+    ["cityParkOrFacility", "propertyUse"]
+  );
+  pushBooleanCondition(
+    checks,
+    "venue_or_property_owner_permission",
+    triggerFields.venue_or_property_owner_permission,
+    facts.venueOrPropertyOwnerPermission,
+    ["venueOrPropertyOwnerPermission"]
+  );
+  pushStringCondition(
+    checks,
+    "indoor_or_outdoor",
+    toList(triggerFields.indoor_or_outdoor, triggerFields.indoor_or_outdoor_values),
+    facts.indoorOrOutdoor,
+    ["indoorOrOutdoor"]
+  );
+  pushBooleanCondition(
+    checks,
+    "sidewalk_or_street_closure",
+    triggerFields.sidewalk_or_street_closure,
+    facts.sidewalkOrStreetClosure,
+    [
+      "hasStreetSidewalkOrParkingImpact",
+      "streetClosure",
+      "sidewalkUseOrClosure",
+      "parkingSpacesBlocked",
+      "trafficControlNeeded",
+      "rightOfWayUse"
+    ]
+  );
+  pushBooleanCondition(checks, "street_closure", triggerFields.street_closure, facts.streetClosure, [
+    "streetClosure",
+    "hasStreetSidewalkOrParkingImpact"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "sidewalk_use_or_closure",
+    triggerFields.sidewalk_use_or_closure,
+    facts.sidewalkUseOrClosure,
+    ["sidewalkUseOrClosure", "hasStreetSidewalkOrParkingImpact"]
+  );
+  pushBooleanCondition(checks, "parking_lot_use", triggerFields.parking_lot_use, facts.parkingLotUse, [
+    "parkingLotUse",
+    "propertyUse",
+    "hasStreetSidewalkOrParkingImpact"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "parking_spaces_blocked",
+    triggerFields.parking_spaces_blocked,
+    facts.parkingSpacesBlocked,
+    ["parkingSpacesBlocked", "hasStreetSidewalkOrParkingImpact"]
+  );
+  pushBooleanCondition(
+    checks,
+    "traffic_control_needed",
+    triggerFields.traffic_control_needed,
+    facts.trafficControlNeeded,
+    ["trafficControlNeeded", "hasStreetSidewalkOrParkingImpact"]
+  );
+  pushBooleanCondition(checks, "right_of_way_use", triggerFields.right_of_way_use, facts.rightOfWayUse, [
+    "rightOfWayUse",
+    "streetClosure",
+    "sidewalkUseOrClosure",
+    "hasStreetSidewalkOrParkingImpact"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "temporary_structure",
+    triggerFields.temporary_structure,
+    facts.temporaryStructure,
+    ["hasTemporaryStructure", "tentOrCanopy", "temporaryStageOrPlatform"]
+  );
+  pushBooleanCondition(checks, "tent_or_canopy", triggerFields.tent_or_canopy, facts.tentOrCanopy, [
+    "tentOrCanopy",
+    "hasTemporaryStructure"
+  ]);
+  pushStringCondition(
+    checks,
+    "tent_size_range",
+    toList(triggerFields.tent_size_range, triggerFields.tent_size_ranges),
+    facts.tentSizeRange,
+    ["tentSizeRange"]
+  );
+  pushBooleanCondition(
+    checks,
+    "temporary_stage_or_platform",
+    triggerFields.temporary_stage_or_platform,
+    facts.temporaryStageOrPlatform,
+    ["temporaryStageOrPlatform", "hasTemporaryStructure"]
+  );
+  pushBooleanCondition(checks, "generator_use", triggerFields.generator_use, facts.generatorUse, [
+    "hasGenerator"
+  ]);
+  pushBooleanCondition(checks, "open_flame", triggerFields.open_flame, facts.openFlame, [
+    "hasOpenFlame",
+    "cookingHeatSource",
+    "propaneOrFuelUse"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "cooking_heat_source",
+    triggerFields.cooking_heat_source,
+    facts.cookingHeatSource,
+    ["cookingHeatSource"]
+  );
+  pushBooleanCondition(
+    checks,
+    "propane_or_fuel_use",
+    triggerFields.propane_or_fuel_use,
+    facts.propaneOrFuelUse,
+    ["propaneOrFuelUse"]
+  );
+  pushBooleanCondition(checks, "signage", triggerFields.signage, facts.signage, [
+    "temporarySignage",
+    "banners"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "temporary_signage",
+    triggerFields.temporary_signage,
+    facts.temporarySignage,
+    ["temporarySignage"]
+  );
+  pushBooleanCondition(checks, "banners", triggerFields.banners, facts.banners, ["banners"]);
+  pushBooleanCondition(
+    checks,
+    "ticketed_event",
+    triggerFields.ticketed_event,
+    facts.ticketedEvent,
+    ["ticketedEvent"]
+  );
+  pushBooleanCondition(checks, "admission_fee", triggerFields.admission_fee, facts.admissionFee, [
+    "admissionFee"
+  ]);
+  pushBooleanCondition(
+    checks,
+    "public_advertising",
+    triggerFields.public_advertising,
+    facts.publicAdvertising,
+    ["publicAdvertising"]
+  );
+  pushBooleanCondition(
+    checks,
+    "multi_vendor_event",
+    triggerFields.multi_vendor_event,
+    facts.multiVendorEvent,
+    ["vendorCount"]
+  );
+  pushBooleanCondition(
+    checks,
+    "recurring_event",
+    triggerFields.recurring_event,
+    facts.recurringEvent,
+    ["recurrence", "recurringEvent"]
+  );
+  pushMinCondition(
+    checks,
+    "expected_attendance_min",
+    triggerFields.min_expected_attendance ?? triggerFields.expected_attendance_min,
+    facts.expectedAttendance,
+    ["expectedAttendance"]
+  );
+  pushMaxCondition(
+    checks,
+    "expected_attendance_max",
+    triggerFields.max_expected_attendance ?? triggerFields.expected_attendance_max,
+    facts.expectedAttendance,
+    ["expectedAttendance"]
+  );
+  pushMinCondition(
+    checks,
+    "vendor_count_min",
+    triggerFields.min_vendor_count ?? triggerFields.vendor_count_min,
+    facts.vendorCount,
+    ["vendorCount"]
+  );
+  pushMaxCondition(
+    checks,
+    "vendor_count_max",
+    triggerFields.max_vendor_count ?? triggerFields.vendor_count_max,
+    facts.vendorCount,
+    ["vendorCount"]
+  );
+
+  return checks.map((condition): EvaluatedEvidenceCondition => {
+    if (allFactsUnknown(document, condition.factKeys)) {
+      return {
+        ...condition,
+        actual: "Unknown",
+        status: "unknown"
+      };
+    }
+
+    return condition;
+  });
+}
+
+function pushStringCondition(
+  checks: EvaluatedEvidenceCondition[],
+  triggerKey: keyof RuleTriggerFields,
+  allowed: string[] | undefined,
+  actual: string | null,
+  factKeys: EventFactFieldKey[]
+) {
+  if (!allowed || allowed.length === 0 || !knownTriggerKeys.has(triggerKey)) {
+    return;
+  }
+
+  const condition: EvaluatedEvidenceCondition = {
+    label: conditionLabel(triggerKey, factKeys),
+    triggerKey,
+    expected: allowed.join(" or "),
+    actual: actual ?? "Unknown",
+    status: includesIfPresent(allowed, actual) ? "matched" : "failed",
+    factKeys
+  };
+
+  checks.push(condition);
+}
+
+function pushBooleanCondition(
+  checks: EvaluatedEvidenceCondition[],
+  triggerKey: keyof RuleTriggerFields,
+  expected: boolean | undefined,
+  actual: boolean,
+  factKeys: EventFactFieldKey[]
+) {
+  if (expected === undefined || !knownTriggerKeys.has(triggerKey)) {
+    return;
+  }
+
+  const condition: EvaluatedEvidenceCondition = {
+    label: conditionLabel(triggerKey, factKeys),
+    triggerKey,
+    expected: expected ? "Yes" : "No",
+    actual: actual ? "Yes" : "No",
+    status: booleanIfPresent(expected, actual) ? "matched" : "failed",
+    factKeys
+  };
+
+  checks.push(condition);
+}
+
+function pushMinCondition(
+  checks: EvaluatedEvidenceCondition[],
+  triggerKey: keyof RuleTriggerFields,
+  expected: number | undefined,
+  actual: number,
+  factKeys: EventFactFieldKey[]
+) {
+  if (expected === undefined || !knownTriggerKeys.has(triggerKey)) {
+    return;
+  }
+
+  const condition: EvaluatedEvidenceCondition = {
+    label: conditionLabel(triggerKey, factKeys),
+    triggerKey,
+    expected: `${expected}+`,
+    actual: String(actual),
+    status: minIfPresent(expected, actual) ? "matched" : "failed",
+    factKeys
+  };
+
+  checks.push(condition);
+}
+
+function pushMaxCondition(
+  checks: EvaluatedEvidenceCondition[],
+  triggerKey: keyof RuleTriggerFields,
+  expected: number | undefined,
+  actual: number,
+  factKeys: EventFactFieldKey[]
+) {
+  if (expected === undefined || !knownTriggerKeys.has(triggerKey)) {
+    return;
+  }
+
+  const condition: EvaluatedEvidenceCondition = {
+    label: conditionLabel(triggerKey, factKeys),
+    triggerKey,
+    expected: `${expected} or fewer`,
+    actual: String(actual),
+    status: maxIfPresent(expected, actual) ? "matched" : "failed",
+    factKeys
+  };
+
+  checks.push(condition);
+}
+
+function allFactsUnknown(document: EventFactsDocument, factKeys: EventFactFieldKey[]) {
+  if (factKeys.length === 0) {
+    return false;
+  }
+
+  return factKeys.every((key) => {
+    const fact = factForKey(document, key);
+    return !fact || fact.status === "unknown" || fact.value === null;
+  });
+}
+
+function factForKey(document: EventFactsDocument, key: EventFactFieldKey) {
+  return document.facts.find((fact) => fact.key === key);
+}
+
+function conditionLabel(triggerKey: keyof RuleTriggerFields, factKeys: EventFactFieldKey[]) {
+  const firstFact = factKeys[0];
+
+  if (firstFact) {
+    return getFactMetadata(firstFact).label;
+  }
+
+  return String(triggerKey).replaceAll("_", " ");
+}
+
+function toEvidenceCondition(
+  condition: EvaluatedEvidenceCondition
+): EvidenceCondition {
+  const { status, ...rest } = condition;
+  return {
+    ...rest,
+    status: status === "unknown" ? "unknown" : "matched"
+  };
+}
+
 function intakeToFacts(intake: IntakeInput): RuleTriggerFacts {
   return eventFactsToRuleEngineFacts(intakeToEventFacts(intake));
 }
@@ -346,6 +950,20 @@ function parseTriggerFields(rule: EngineRuleRecord) {
   } catch {
     return null;
   }
+}
+
+function sourceIdForRuleRecord(rule: Pick<EngineRuleRecord, "jurisdictionCode" | "sourceUrl">) {
+  if (!rule.jurisdictionCode) {
+    return null;
+  }
+
+  return (
+    officialSourceInventory.find(
+      (source) =>
+        source.jurisdictionCode === rule.jurisdictionCode &&
+        source.sourceUrl === rule.sourceUrl
+    )?.id ?? null
+  );
 }
 
 function toChecklistItem(rule: EngineRuleRecord): ChecklistItem {
@@ -392,6 +1010,17 @@ function sortChecklistItems(left: ChecklistItem, right: ChecklistItem) {
     jurisdictionRank[left.jurisdictionType] -
       jurisdictionRank[right.jurisdictionType] ||
     confidenceRank[left.confidence] - confidenceRank[right.confidence] ||
+    left.title.localeCompare(right.title)
+  );
+}
+
+function sortEvidenceChecklistItems(
+  left: EvidenceChecklistItem,
+  right: EvidenceChecklistItem
+) {
+  return (
+    sortChecklistItems(left, right) ||
+    right.unknownConditions.length - left.unknownConditions.length ||
     left.title.localeCompare(right.title)
   );
 }

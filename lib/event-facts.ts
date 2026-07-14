@@ -432,6 +432,10 @@ const ruleEvaluationSchema = z.object({
   ruleVersion: z.string().min(1),
   relevantFactKeys: z.array(z.string()).min(1),
   jurisdictionCode: z.string().nullable(),
+  matchedConditions: z.array(z.string()).default([]),
+  unknownConditions: z.array(z.string()).default([]),
+  sourceIds: z.array(z.string()).default([]),
+  evaluatedAt: z.string().datetime(),
   knownUncertainty: z.array(z.string())
 });
 
@@ -816,6 +820,9 @@ export function buildRequirementResultTrace(
     factKeys?: EventFactFieldKey[];
     ruleVersion?: string;
     sourceId?: string;
+    matchedConditions?: string[];
+    unknownConditions?: string[];
+    evaluationTimestamp?: string;
     knownUncertainty?: string[];
   }
 ): RequirementResult {
@@ -828,6 +835,10 @@ export function buildRequirementResultTrace(
       ruleVersion: options?.ruleVersion ?? "legacy-intake-engine",
       relevantFactKeys: options?.factKeys ?? ["eventType", "city"],
       jurisdictionCode: null,
+      matchedConditions: options?.matchedConditions ?? [],
+      unknownConditions: options?.unknownConditions ?? [],
+      sourceIds: options?.sourceId ? [options.sourceId] : [],
+      evaluatedAt: options?.evaluationTimestamp ?? new Date().toISOString(),
       knownUncertainty: options?.knownUncertainty ?? []
     },
     officialSource: {
@@ -851,21 +862,20 @@ export function buildRequirementResultsFromChecklist(
     jurisdictionCode?: string | null;
   }
 ) {
-  return items.map((item) =>
-    requirementResultSchema.parse({
-      ...buildRequirementResultTrace(item, {
-        factKeys: options?.factKeysByRuleId?.[item.ruleId],
-        ruleVersion: options?.ruleVersion
-      }),
+  return items.map((item) => {
+    const trace = buildRequirementResultTrace(item, {
+      factKeys: options?.factKeysByRuleId?.[item.ruleId],
+      ruleVersion: options?.ruleVersion
+    });
+
+    return requirementResultSchema.parse({
+      ...trace,
       ruleEvaluation: {
-        ...buildRequirementResultTrace(item, {
-          factKeys: options?.factKeysByRuleId?.[item.ruleId],
-          ruleVersion: options?.ruleVersion
-        }).ruleEvaluation,
+        ...trace.ruleEvaluation,
         jurisdictionCode: options?.jurisdictionCode ?? null
       }
-    })
-  );
+    });
+  });
 }
 
 function sanitizePartialIntake(value: unknown) {

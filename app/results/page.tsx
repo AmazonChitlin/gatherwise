@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { CopyContactButton } from "@/components/copy-contact-button";
 import { DisclaimerNotice } from "@/components/disclaimer-notice";
-import { EventLocalIcon } from "@/components/eventlocal-icons";
 import { Badge, ButtonLink, Card, PageContainer } from "@/components/ui";
 import {
-  findSupportedJurisdiction,
-  findSupportedJurisdictionByNormalizedCode,
-  supportedJurisdictions
-} from "@/lib/config";
-import { parseStoredIntakePayload } from "@/lib/event-facts";
+  buildRequirementResultTrace,
+  factStatusToUserFacingState,
+  getFactMetadata,
+  intakeToEventFacts,
+  parseEventFactsDocument,
+  parseStoredIntakePayload,
+  type EventFact,
+  type EventFactFieldKey,
+  type EventFactsDocument,
+  type RequirementResult
+} from "@/lib/event-facts";
 import { parseResultsSnapshot } from "@/lib/intake-storage";
 import { prisma } from "@/lib/prisma";
-import { futurePaidProducts } from "@/lib/future-products";
-import { buildChecklistForIntake, type ChecklistItem } from "@/lib/rule-engine";
 import {
-  buildRedFlags,
-  formatConfidence,
-  formatRequirementLevel,
-  formatTimeline,
-  formatVerificationMessage,
-  formatVerificationStatus,
-  groupByJurisdiction,
-  sortByLeadTime,
-  topItemsToCheckFirst
-} from "@/lib/results-helpers";
+  buildEvidenceChecklistForEventFacts,
+  type EvidenceChecklistItem
+} from "@/lib/rule-engine";
+import { formatTimeline, topItemsToCheckFirst } from "@/lib/results-helpers";
 import type { IntakeInput } from "@/lib/schemas";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -48,6 +44,9 @@ export default async function ResultsPage({
   const snapshot = getParam(params.snapshot);
   const intake = intakeId ? await getIntakeWithUseCase(intakeId) : null;
   const snapshotPayload = snapshot ? parseResultsSnapshot(snapshot) : null;
+  const storedPayload = intake
+    ? parseStoredIntakePayload(intake.rawAnswers)
+    : snapshotPayload;
   const intakeInput = intake
     ? toIntakeInput(intake)
     : snapshotPayload?.intake
@@ -79,334 +78,460 @@ export default async function ResultsPage({
     );
   }
 
-  const checklistItems = await buildChecklistForIntake(intakeInput);
-  const timelineItems = formatTimeline(checklistItems);
-  const redFlags = buildRedFlags(checklistItems);
-  const jurisdictionGroups = groupByJurisdiction(checklistItems);
-  const agencyContacts = uniqueAgencyContacts(checklistItems);
+  const eventFacts = normalizeResultsEventFacts(
+    storedPayload?.eventFacts,
+    intakeInput
+  );
+  const checklistItems = await buildEvidenceChecklistForEventFacts(eventFacts);
+  const requirementResults = checklistItems.map((item) =>
+    buildRequirementResultTrace(item, {
+      factKeys: item.relevantFactKeys,
+      ruleVersion: item.ruleVersion,
+      sourceId: item.sourceId ?? undefined,
+      matchedConditions: item.matchedConditions.map(formatConditionSummary),
+      unknownConditions: item.unknownConditions.map(formatConditionSummary),
+      evaluationTimestamp: item.evaluationTimestamp,
+      knownUncertainty: item.unknownConditions.map((condition) => condition.label)
+    })
+  );
   const topItems = topItemsToCheckFirst(checklistItems);
-  const cityLabel =
-    findSupportedJurisdiction(intakeInput.city)?.label ?? intakeInput.city;
-  const propertyLabel =
-    venueLabel(intakeInput.propertyUse) ?? intakeInput.propertyUse;
+  const timelineItems = formatTimeline(checklistItems);
+  const sources = uniqueSources(requirementResults);
+  const missingFacts = buildMissingFactRows(eventFacts, checklistItems);
+  const nextAction = topItems[0] ?? null;
 
   return (
     <main className="min-h-screen">
-      <PageContainer>
+      <PageContainer className="py-8">
         <ButtonLink href="/intake" tone="secondary">
           <ArrowLeft className="h-4 w-4" />
           Back to planning
         </ButtonLink>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="command-card-dark command-pattern p-6">
-            <Badge tone="highlight">Readiness dashboard</Badge>
+            <Badge tone="highlight">Readiness summary</Badge>
             <h1 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em]">
               {intakeInput.eventName} readiness summary
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Based on the details you provided, this summary shows what may
-              apply, what needs review, and which official sources to check
-              before event day.
+              Based on the details you provided, Gatherwise shows what may
+              apply, what still needs review, and where the official source
+              starts.
             </p>
-
-            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <SummaryItem
-                label="City"
-                tone="dark"
-                value={cityLabel ?? "Not provided"}
-              />
-              <SummaryItem
-                label="County"
-                tone="dark"
-                value={intakeInput.county ?? "Not provided"}
-              />
-              <SummaryItem
-                label="Event type"
-                tone="dark"
-                value={intakeInput.eventType}
-              />
-              <SummaryItem
-                label="Property"
-                tone="dark"
-                value={propertyLabel}
-              />
-              <SummaryItem
-                label="Attendance"
-                tone="dark"
-                value={String(intakeInput.expectedAttendance)}
-              />
-              <SummaryItem
-                label="Vendors"
-                tone="dark"
-                value={String(intakeInput.vendorCount)}
-              />
-            </dl>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <DashboardMetric
-                label="Matched items"
+                label="Possible requirements"
                 tone="dark"
                 value={String(checklistItems.length)}
               />
-              <DashboardMetric
-                label="Agencies"
+              <SummaryItem
+                label="Missing details"
                 tone="dark"
-                value={String(agencyContacts.length)}
+                value={String(missingFacts.length)}
               />
-              <DashboardMetric
-                label="Jurisdictions"
+              <SummaryItem
+                label="Official sources"
                 tone="dark"
-                value={String(jurisdictionGroups.length)}
+                value={String(sources.length)}
               />
-            </div>
+              <SummaryItem
+                label="Jurisdiction"
+                tone="dark"
+                value={eventFacts.jurisdiction.label}
+              />
+            </dl>
           </Card>
 
           <aside className="space-y-5">
             <DisclaimerNotice />
-            <Card className="border-[var(--primary)] p-5">
-              <h2 className="text-lg font-semibold">Downloadable Event Roadmap</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Future pilot feature, not active. Gatherwise does not process
-                payments or generate downloads yet.
-              </p>
-              <div className="mt-4 space-y-4">
-                {futurePaidProducts.map((product) => (
-                  <article
-                    className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3"
-                    key={product.name}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold">{product.name}</h3>
-                      <Badge tone="neutral">{product.status}</Badge>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                      {product.description}
-                    </p>
-                  </article>
-                ))}
-              </div>
-              <ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--muted)]">
-                <li>Permit checklist</li>
-                <li>Timeline</li>
-                <li>Agency contact sheet</li>
-                <li>Document prep list</li>
-                <li>Red flag summary</li>
-                <li>Vendor or organizer next steps</li>
-              </ul>
-              <button
-                className="mt-4 w-full rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--muted)]"
-                disabled
-                type="button"
+            <Card className="p-5">
+              <Badge
+                tone={eventFacts.jurisdiction.supported ? "verified" : "warning"}
               >
-                Coming later: roadmap and vendor packet
-              </button>
+                {eventFacts.jurisdiction.supported ? "Arizona pilot" : "Not supported"}
+              </Badge>
+              <h2 className="mt-3 text-lg font-black">Result boundary</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                The deterministic rule engine is the authority for possible
+                requirements, agencies, lead times, and official sources.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                Unsupported jurisdictions are refused instead of guessed.
+              </p>
             </Card>
           </aside>
         </div>
 
-        <section className="mt-6 grid gap-5 lg:grid-cols-[360px_1fr]">
-          <aside className="space-y-5">
+        <div className="mt-6 space-y-5">
+          <section aria-labelledby="next-action">
             <Card className="p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
-                  <EventLocalIcon className="h-5 w-5" name="timeline" />
-                </span>
-                <h2 className="text-lg font-black">Timeline and lead times</h2>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Planning windows are based on matched rule records. Confirm
-                final timing with the agency.
+              <Badge tone="primary">Most important next action</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="next-action"
+              >
+                {eventFacts.jurisdiction.supported
+                  ? nextAction?.title ?? "Confirm your jurisdiction and core event details"
+                  : "Choose a supported Arizona pilot jurisdiction before relying on this result"}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                {!eventFacts.jurisdiction.supported
+                  ? "Gatherwise currently supports a limited Arizona pilot. This result stops at the boundary instead of presenting unsupported guidance."
+                  : nextAction
+                    ? `${nextAction.jurisdiction} may need attention first, especially if your planning window is ${
+                        nextAction.leadTimeDays > 0
+                          ? `${nextAction.leadTimeDays} days or less`
+                          : "still unconfirmed"
+                      }.`
+                    : "No verified pilot rules matched these details yet. Confirm the official source for your city, county, venue, or state agency before moving ahead."}
               </p>
-              <ul className="mt-3 space-y-3 text-sm leading-6 text-[var(--muted)]">
-                {timelineItems.map((item, index) => (
-                  <li
-                    className={`rounded-[var(--radius-control)] p-3 ${
-                      index === 0 && checklistItems.length > 0
-                        ? "border border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary-strong)]"
-                        : "bg-[var(--sand-light)]"
-                    }`}
+            </Card>
+          </section>
+
+          <section aria-labelledby="possible-requirements">
+            <Card className="p-5">
+              <Badge tone="secondary">Possible requirements</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="possible-requirements"
+              >
+                What may apply
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                These are deterministic rule results, not legal determinations.
+              </p>
+              {checklistItems.length === 0 ? (
+                <div className="mt-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4 text-sm leading-6 text-[var(--muted)]">
+                  No pilot rule records matched these details yet. Check the
+                  official source directly before you set up.
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-3">
+                  {checklistItems.map((item) => (
+                    <RequirementCard item={item} key={item.ruleId} />
+                  ))}
+                </div>
+              )}
+            </Card>
+          </section>
+
+          <section aria-labelledby="missing-information">
+            <Card className="p-5">
+              <Badge tone="warning">Missing information</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="missing-information"
+              >
+                Details that may change your results
+              </h2>
+              {missingFacts.length === 0 ? (
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  No high-value missing details were found in the current
+                  requirement set.
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {missingFacts.map((fact) => (
+                    <article
+                      className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4"
+                      key={fact.key}
+                    >
+                      <p className="text-sm font-semibold">{fact.label}</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                        {fact.reason}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </section>
+
+          <section aria-labelledby="planning-order">
+            <Card className="p-5">
+              <Badge tone="verified">Planning order</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="planning-order"
+              >
+                Planning order
+              </h2>
+              <div className="mt-4 grid gap-3">
+                {timelineItems.map((item) => (
+                  <div
+                    className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4 text-sm leading-6"
                     key={item}
                   >
-                    {index === 0 && checklistItems.length > 0 ? (
-                      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em]">
-                        Check first
-                      </span>
-                    ) : null}
                     {item}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-
-            <Card className="p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--warning-soft)] text-[var(--warning-strong)]">
-                  <EventLocalIcon className="h-5 w-5" name="warning" />
-                </span>
-                <h2 className="text-lg font-black">Red flags to confirm</h2>
-              </div>
-              <ul className="mt-3 space-y-3 text-sm leading-6 text-[var(--muted)]">
-                {redFlags.map((flag) => (
-                  <li className="rounded-[var(--radius-control)] bg-[var(--warning-soft)] p-3 text-[var(--warning-strong)]" key={flag}>
-                    {flag}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-
-            <Card className="p-5">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--verified-soft)] text-[var(--verified-strong)]">
-                  <EventLocalIcon className="h-5 w-5" name="contact" />
-                </span>
-                <h2 className="text-lg font-black">Agency contacts</h2>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Use these contacts and source links to confirm details directly.
-              </p>
-              <div className="mt-3 space-y-3">
-                {agencyContacts.length === 0 ? (
-                  <p className="text-sm leading-6 text-[var(--muted)]">
-                    No agency contacts matched yet. If you are unsure, contact
-                    the city, county, or state agency for your event location.
-                  </p>
-                ) : null}
-                {agencyContacts.map((agency) => (
-                  <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--sand-light)] p-3 text-sm leading-6" key={agency.name}>
-                    <p className="font-semibold">{agency.name}</p>
-                    {agency.phone ? (
-                      <p className="mt-2 flex flex-wrap items-center gap-2 text-[var(--muted)]">
-                        <span>Phone: {agency.phone}</span>
-                        <CopyContactButton label="phone" value={agency.phone} />
-                      </p>
-                    ) : null}
-                    {agency.email ? (
-                      <p className="mt-2 flex flex-wrap items-center gap-2 text-[var(--muted)]">
-                        <span>Email: {agency.email}</span>
-                        <CopyContactButton label="email" value={agency.email} />
-                      </p>
-                    ) : null}
-                    {agency.url ? (
-                      <a
-                        className="mt-2 inline-flex items-center gap-1 text-[var(--brand-strong)] underline"
-                        href={agency.url}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        Agency website
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    ) : null}
                   </div>
                 ))}
               </div>
             </Card>
-          </aside>
+          </section>
 
-          <section className="space-y-5">
+          <section aria-labelledby="evidence-trail">
             <Card className="p-5">
-              <Badge tone="primary">Start here</Badge>
-              <h2 className="mt-4 text-2xl font-black tracking-[-0.02em]">
-                What to check first
+              <Badge tone="highlight">Evidence Trail</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="evidence-trail"
+              >
+                Your fact. Verified rule. Official source.
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Start here, then review what the result means, why it may
-                apply, and which official source to check.
+                Expand any result to see the Gatherwise Evidence Trail.
               </p>
-              {topItems.length > 0 ? (
-                <div className="mt-4 grid gap-3">
-                  {topItems.map((item) => (
-                    <TopItemCard item={item} key={item.ruleId} />
-                  ))}
-                </div>
-              ) : null}
+              <div className="mt-4 space-y-3">
+                {requirementResults.map((result) => {
+                  const item = checklistItems.find(
+                    (entry) => entry.ruleId === result.ruleEvaluation.ruleId
+                  );
+
+                  if (!item) {
+                    return null;
+                  }
+
+                  return (
+                    <EvidenceTrailCard
+                      eventFacts={eventFacts}
+                      item={item}
+                      key={result.resultId}
+                      result={result}
+                    />
+                  );
+                })}
+              </div>
             </Card>
-
-            {checklistItems.length === 0 ? (
-              <Card className="border-[var(--warning)] bg-[var(--warning-soft)] p-5">
-                <Badge tone="warning">No matched checklist items yet</Badge>
-                <h3 className="mt-3 text-lg font-semibold">
-                  No pilot rule records matched these details.
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  This does not mean nothing applies. It means the current
-                  Gatherwise pilot records did not match the details provided.
-                  Check the official source with the city, county, state,
-                  venue, or other relevant agency before you set up.
-                </p>
-              </Card>
-            ) : null}
-
-            {jurisdictionGroups.map((group) => (
-              <Card className="overflow-hidden p-0" key={group.jurisdiction}>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface-muted)] p-5">
-                  <h3 className="text-xl font-black tracking-[-0.02em]">
-                    {group.jurisdiction}
-                  </h3>
-                  <Badge tone="secondary">
-                    {group.items.length} item{group.items.length === 1 ? "" : "s"}
-                  </Badge>
-                </div>
-                <div className="divide-y divide-[var(--line)] px-5">
-                  {sortByLeadTime(group.items).map((item) => (
-                    <article className="py-5 first:pt-0 last:pb-0" key={item.ruleId}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="mr-2 text-base font-semibold">
-                          {item.title}
-                        </h4>
-                        <Badge tone={requirementTone(item.requirementLevel)}>
-                          {formatRequirementLevel(item.requirementLevel)}
-                        </Badge>
-                        <Badge tone={confidenceTone(item.confidence)}>
-                          {formatConfidence(item.confidence)}
-                        </Badge>
-                        <Badge tone={verificationTone(item.verificationStatus)}>
-                          {formatVerificationStatus(item.verificationStatus)}
-                        </Badge>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                        {item.plainEnglishSummary}
-                      </p>
-                      <div className="mt-3 rounded-[var(--radius-control)] bg-[var(--primary-soft)] p-3 text-sm leading-6 text-[var(--primary-strong)]">
-                        Based on the details you provided, this item may apply
-                        for this jurisdiction and event setup.
-                      </div>
-                      <div className="mt-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-sm leading-6 text-[var(--muted)]">
-                        {formatVerificationMessage(item)}
-                      </div>
-                      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                        <SummaryItem
-                          label="Lead time"
-                          value={
-                            item.leadTimeDays > 0
-                              ? `${item.leadTimeDays} days`
-                              : "Confirm timing"
-                          }
-                        />
-                        <SummaryItem label="Agency" value={item.agencyName} />
-                        <SummaryItem
-                          label="Last verified"
-                          value={item.lastVerified ?? "Needs review"}
-                        />
-                      </dl>
-                      <a
-                        className="focus-ring mt-4 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--verified)] bg-[var(--verified-soft)] px-3 py-2 text-sm font-semibold text-[var(--verified-strong)]"
-                        href={item.sourceUrl}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        Official source: {item.sourceName}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </article>
-                  ))}
-                </div>
-              </Card>
-            ))}
           </section>
-        </section>
+
+          <section aria-labelledby="official-sources">
+            <Card className="p-5">
+              <Badge tone="secondary">Full official sources</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="official-sources"
+              >
+                Official sources
+              </h2>
+              <div className="mt-4 grid gap-3">
+                {sources.map((source) => (
+                  <article
+                    className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4"
+                    key={`${source.sourceId}:${source.sourceUrl}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">{source.sourceName}</h3>
+                      {source.sourceId ? (
+                        <Badge tone="neutral">Source ID: {source.sourceId}</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      {source.jurisdiction.name} · Review date:{" "}
+                      {source.reviewDate ?? "Needs review"}
+                    </p>
+                    <a
+                      className="focus-ring mt-3 inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--verified)] bg-[var(--verified-soft)] px-3 py-2 text-sm font-semibold text-[var(--verified-strong)]"
+                      href={source.sourceUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Check the official source
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </Card>
+          </section>
+
+          <section aria-labelledby="limitations">
+            <Card className="p-5">
+              <Badge tone="warning">Limitations</Badge>
+              <h2
+                className="mt-4 text-2xl font-black tracking-[-0.02em]"
+                id="limitations"
+              >
+                Limitations
+              </h2>
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--muted)]">
+                <li>Arizona pilot only.</li>
+                <li>Gatherwise is informational and does not make legal determinations.</li>
+                <li>Official source pages can change, so human verification is still recommended.</li>
+                <li>Unknown details stay unknown and may change whether a requirement appears.</li>
+              </ul>
+            </Card>
+          </section>
+        </div>
       </PageContainer>
     </main>
+  );
+}
+
+function RequirementCard({ item }: { item: EvidenceChecklistItem }) {
+  const primaryTone =
+    item.requirementLevel === "likely required" ? "primary" : "highlight";
+
+  return (
+    <article className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={primaryTone}>
+          {item.requirementLevel === "likely required"
+            ? "May apply"
+            : "Needs review"}
+        </Badge>
+        <Badge tone={item.unknownConditions.length > 0 ? "warning" : "verified"}>
+          {item.unknownConditions.length > 0
+            ? "Information missing"
+            : "Confirmed from your details"}
+        </Badge>
+        {item.verificationStatus !== "verified" ? (
+          <Badge tone="warning">Source needs review</Badge>
+        ) : null}
+      </div>
+      <h3 className="mt-3 text-lg font-semibold">{item.title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        {item.plainEnglishSummary}
+      </p>
+      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+        {item.jurisdiction} ·{" "}
+        {item.leadTimeDays > 0
+          ? `${item.leadTimeDays} day lead time`
+          : "Lead time not verified yet"}
+      </p>
+    </article>
+  );
+}
+
+function EvidenceTrailCard({
+  eventFacts,
+  item,
+  result
+}: {
+  eventFacts: EventFactsDocument;
+  item: EvidenceChecklistItem;
+  result: RequirementResult;
+}) {
+  return (
+    <details className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="highlight">Evidence Trail</Badge>
+          <Badge tone={item.unknownConditions.length > 0 ? "warning" : "verified"}>
+            {item.unknownConditions.length > 0 ? "Needs review" : "Confirmed from your details"}
+          </Badge>
+        </div>
+        <h3 className="mt-3 text-lg font-semibold">{item.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          {item.plainEnglishSummary}
+        </p>
+      </summary>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <TrailPanel title="Your fact">
+          {result.ruleEvaluation.relevantFactKeys.map((key) => (
+            <FactRow eventFacts={eventFacts} factKey={key as EventFactFieldKey} key={key} />
+          ))}
+        </TrailPanel>
+
+        <TrailPanel title="Verified rule">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Rule ID: {result.ruleEvaluation.ruleId}
+          </p>
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Version: {result.ruleEvaluation.ruleVersion}
+          </p>
+          {result.ruleEvaluation.matchedConditions.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                Matched conditions
+              </p>
+              <ul className="mt-2 space-y-2 text-sm leading-6">
+                {result.ruleEvaluation.matchedConditions.map((condition) => (
+                  <li key={condition}>{condition}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {result.ruleEvaluation.unknownConditions.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                Unknown conditions
+              </p>
+              <ul className="mt-2 space-y-2 text-sm leading-6">
+                {result.ruleEvaluation.unknownConditions.map((condition) => (
+                  <li key={condition}>{condition}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </TrailPanel>
+
+        <TrailPanel title="Official source">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            {result.officialSource.sourceName}
+          </p>
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Source ID: {result.officialSource.sourceId}
+          </p>
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Review date: {result.officialSource.reviewDate ?? "Needs review"}
+          </p>
+          <a
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-strong)] underline"
+            href={result.officialSource.sourceUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Check the official source
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </TrailPanel>
+      </div>
+    </details>
+  );
+}
+
+function TrailPanel({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[var(--radius-card)] border border-[var(--line)] bg-white/70 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+        {title}
+      </p>
+      <div className="mt-3 space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function FactRow({
+  eventFacts,
+  factKey
+}: {
+  eventFacts: EventFactsDocument;
+  factKey: EventFactFieldKey;
+}) {
+  const fact = eventFacts.facts.find((entry) => entry.key === factKey);
+  const metadata = getFactMetadata(factKey);
+  const state = fact ? factStatusToUserFacingState(fact.status) : "unknown";
+
+  return (
+    <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-semibold">{metadata.label}</p>
+        <Badge tone={state === "confirmed" ? "verified" : "warning"}>
+          {state === "confirmed" ? "Confirmed" : state === "unknown" ? "Unknown" : "Needs review"}
+        </Badge>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        {fact ? formatFactValue(fact) : "Unknown"}
+      </p>
+    </div>
   );
 }
 
@@ -441,117 +566,82 @@ function SummaryItem({
   );
 }
 
-function DashboardMetric({
-  label,
-  value,
-  tone = "light"
-}: {
-  label: string;
-  value: string;
-  tone?: "light" | "dark";
-}) {
-  return (
-    <div
-      className={`rounded-[var(--radius-control)] border p-3 ${
-        tone === "dark"
-          ? "border-white/10 bg-white/8"
-          : "border-[var(--line)] bg-[var(--sand-light)]"
-      }`}
-    >
-      <p
-        className={`text-xs font-semibold uppercase tracking-[0.12em] ${
-          tone === "dark" ? "text-slate-300" : "opacity-70"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`mt-1 text-2xl font-black ${
-          tone === "dark" ? "text-white" : ""
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function TopItemCard({ item }: { item: ChecklistItem }) {
-  return (
-    <article className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-muted)] p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={requirementTone(item.requirementLevel)}>
-          {formatRequirementLevel(item.requirementLevel)}
-        </Badge>
-        <Badge tone={verificationTone(item.verificationStatus)}>
-          {formatVerificationStatus(item.verificationStatus)}
-        </Badge>
-      </div>
-      <h3 className="mt-3 text-base font-semibold">{item.title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        {item.jurisdiction} ·{" "}
-        {item.leadTimeDays > 0
-          ? `${item.leadTimeDays} day planning lead time`
-          : "Confirm timing"}
-      </p>
-    </article>
-  );
-}
-
-function uniqueAgencyContacts(
-  items: Awaited<ReturnType<typeof buildChecklistForIntake>>
+function normalizeResultsEventFacts(
+  document: EventFactsDocument | undefined,
+  intake: IntakeInput
 ) {
-  const agencies = new Map<
-    string,
-    { name: string; phone?: string; email?: string; url?: string }
-  >();
+  if (!document) {
+    return intakeToEventFacts(intake, { defaultStatus: "confirmed" });
+  }
 
-  for (const item of items) {
-    agencies.set(item.agencyName, {
-      name: item.agencyName,
-      phone: item.agencyPhone,
-      email: item.agencyEmail,
-      url: item.agencyUrl
+  return parseEventFactsDocument({
+    ...document,
+    facts: document.facts.map((fact) => ({
+      ...fact,
+      status: fact.status === "provided" ? "confirmed" : fact.status
+    }))
+  });
+}
+
+function buildMissingFactRows(
+  eventFacts: EventFactsDocument,
+  checklistItems: EvidenceChecklistItem[]
+) {
+  const rankedKeys = new Map<EventFactFieldKey, number>();
+
+  for (const item of checklistItems) {
+    for (const condition of item.unknownConditions) {
+      for (const key of condition.factKeys) {
+        rankedKeys.set(key, (rankedKeys.get(key) ?? 0) + 1);
+      }
+    }
+  }
+
+  return [...rankedKeys.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 6)
+    .map(([key, score]) => {
+      const fact = eventFacts.facts.find((entry) => entry.key === key);
+      return {
+        key,
+        label: getFactMetadata(key).label,
+        reason:
+          fact?.status === "unknown"
+            ? `This detail is still unknown and may change ${score} possible requirement${
+                score === 1 ? "" : "s"
+              }.`
+            : `This detail still needs review and may change ${score} possible requirement${
+                score === 1 ? "" : "s"
+              }.`
+      };
     });
-  }
-
-  return Array.from(agencies.values());
 }
 
-function requirementTone(level: ChecklistItem["requirementLevel"]) {
-  if (level === "likely required") {
-    return "primary";
+function uniqueSources(results: RequirementResult[]) {
+  const sources = new Map<string, RequirementResult["officialSource"]>();
+
+  for (const result of results) {
+    const key = `${result.officialSource.sourceId}:${result.officialSource.sourceUrl}`;
+    sources.set(key, result.officialSource);
   }
 
-  if (level === "may be required") {
-    return "highlight";
-  }
-
-  return "warning";
+  return [...sources.values()];
 }
 
-function confidenceTone(confidence: ChecklistItem["confidence"]) {
-  if (confidence === "high") {
-    return "success";
-  }
-
-  if (confidence === "medium") {
-    return "warning";
-  }
-
-  return "alert";
+function formatConditionSummary(condition: EvidenceChecklistItem["matchedConditions"][number]) {
+  return `${condition.label}: expected ${condition.expected}; actual ${condition.actual}.`;
 }
 
-function verificationTone(status: ChecklistItem["verificationStatus"]) {
-  if (status === "verified") {
-    return "verified";
+function formatFactValue(fact: EventFact) {
+  if (fact.status === "unknown" || fact.value === null) {
+    return "Unknown";
   }
 
-  if (status === "needs_review") {
-    return "warning";
+  if (typeof fact.value === "boolean") {
+    return fact.value ? "Yes" : "No";
   }
 
-  return "neutral";
+  return String(fact.value);
 }
 
 function getIntakeWithUseCase(intakeId: string) {
@@ -567,7 +657,7 @@ function toIntakeInput(intake: IntakeWithUseCase): IntakeInput {
   return {
     ...rawAnswers,
     eventName: intake.eventName,
-    city: cityCodeFromIntake(intake),
+    city: intake.city ?? "phoenix",
     county: intake.county ?? "Maricopa County",
     useCase: intake.useCase?.slug ?? "multi-vendor-market",
     eventType: intake.eventType,
@@ -591,21 +681,6 @@ function toIntakeInput(intake: IntakeWithUseCase): IntakeInput {
   };
 }
 
-function cityCodeFromIntake(intake: IntakeWithUseCase) {
-  const normalized = findSupportedJurisdictionByNormalizedCode(
-    intake.jurisdictionCode
-  );
-
-  if (normalized) {
-    return normalized.code;
-  }
-
-  return (
-    supportedJurisdictions.find((item) => item.city === intake.city)?.code ??
-    (intake.city ?? "phoenix").toLowerCase().replaceAll(" ", "-")
-  );
-}
-
 function getParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -619,8 +694,8 @@ function normalizeSnapshotIntake(input: Partial<IntakeInput>): IntakeInput {
     useCase: input.useCase ?? "multi-vendor-market",
     eventType: input.eventType ?? "outdoor-market",
     propertyUse: input.propertyUse ?? "private-property",
-    expectedAttendance: input.expectedAttendance ?? 1,
-    vendorCount: input.vendorCount ?? 1,
+    expectedAttendance: input.expectedAttendance ?? 0,
+    vendorCount: input.vendorCount ?? 0,
     eventDate: input.eventDate ?? new Date().toISOString().slice(0, 10),
     recurrence: input.recurrence ?? "one-time",
     hasFood: input.hasFood ?? false,
@@ -634,16 +709,4 @@ function normalizeSnapshotIntake(input: Partial<IntakeInput>): IntakeInput {
     hasStreetSidewalkOrParkingImpact:
       input.hasStreetSidewalkOrParkingImpact ?? false
   };
-}
-
-function venueLabel(propertyUse: IntakeInput["propertyUse"]) {
-  return (
-    {
-      "private-property": "Private property",
-      "parking-lot": "Parking lot or outdoor private space",
-      "public-property": "Public property",
-      "park-or-plaza": "Park or plaza",
-      "licensed-venue": "Existing licensed venue"
-    } satisfies Record<IntakeInput["propertyUse"], string>
-  )[propertyUse];
 }
